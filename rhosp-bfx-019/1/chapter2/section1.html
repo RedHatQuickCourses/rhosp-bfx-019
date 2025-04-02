@@ -170,9 +170,6 @@
 <ol class="arabic">
 <li>
 <p>Break the environment if you have not done it and then step through the fix.</p>
-</li>
-</ol>
-</div>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
@@ -185,13 +182,9 @@ ssh -i /home/stack/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@1
 </div>
 </blockquote>
 </div>
-<div class="olist arabic">
-<ol class="arabic">
+</li>
 <li>
 <p>Run the ssh command from the previous lab command output and notice the Connection timed out error. Also run the ping command against instance IP.</p>
-</li>
-</ol>
-</div>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
@@ -211,6 +204,159 @@ PING 172.25.250.203 (172.25.250.203) 56(84) bytes of data.</p>
 </div>
 <div class="paragraph">
 <p>You observe that both ping and ssh attempts failed which indicates lack of connectivity.</p>
+</div>
+</li>
+<li>
+<p>Access the overcloud environment and determine the specific compute node where the instance is currently running.</p>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>(overcloud) [stack@director ~]$ openstack server list --long -c Name -c Status -c Host
+-----------------------------------------------------------------
+| Name               | Status | Host                                |
+-----------------------------------------------------------------
+| scenario-bfx019-vm | ACTIVE | overcloud-novacompute-1.localdomain |
+-----------------------------------------------------------------</p>
+</div>
+</blockquote>
+</div>
+<div class="paragraph">
+<p>Observe that it is overcloud-novacompute-1 in the above output, it my differ in your case.</p>
+</div>
+</li>
+<li>
+<p>Make sure you have access to compute node from other terminal before proceeding further.</p>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>(overcloud) [stack@director ~]$ ssh tripleo-admin@overcloud-compute1
+Register this system with Red Hat Insights: insights-client --register
+Create an account or view all your systems at <a href="https://red.ht/insights-dashboard" class="bare">https://red.ht/insights-dashboard</a>
+Last login: Sat Mar 16 09:49:27 2024 from 172.25.249.11
+[tripleo-admin@overcloud-novacompute-1 ~]$</p>
+</div>
+</blockquote>
+</div>
+<div class="paragraph">
+<p>Note the slight change in the compute node&#8217;s hostname for ssh connectivity.</p>
+</div>
+</li>
+<li>
+<p>Check the route taken to reach the instance from the director VM.</p>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>(overcloud) [stack@director ~]$ ip route get 172.25.250.203
+172.25.250.203 dev eth0 src 172.25.250.11 uid 1003</p>
+</div>
+</blockquote>
+</div>
+<div class="paragraph">
+<p>The above output shows that the route goes through eth0.</p>
+</div>
+</li>
+<li>
+<p>Confirm that the director VM and the instance&#8217;s floating IP are on the same Layer 2 (L2) domain, specifically on the 172.25.250.0 subnet.</p>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>(overcloud) [stack@director ~]$ ip addr show eth0
+2: eth0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 52:54:00:04:fa:0b brd ff:ff:ff:ff:ff:ff
+    altname enp0s3
+    altname ens3
+    inet 172.25.250.11/24 brd 172.25.250.255 scope global noprefixroute eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::5054:ff:fe04:fa0b/64 scope link
+       valid_lft forever preferred_lft forever</p>
+</div>
+</blockquote>
+</div>
+</li>
+<li>
+<p>Examine the ARP cache on the director VM.</p>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>(overcloud) [stack@director ~]$ ip neighbor | grep 172.25.250.203
+172.25.250.203 dev eth0 lladdr fa:16:3e:60:74:ec STALE</p>
+</div>
+</blockquote>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>An entry with the floating IP is associated with a MAC address, indicating successful ARP negotiation.</p>
+</li>
+<li>
+<p>This signifies functional communication via ARP, but ICMP communication remains problematic.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Let us proceed to check whether the packets are being correctly routed to the appropriate node. Run the below command on the compute node to check the interface associated with the bridge br-ex.</p>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>(overcloud) [stack@director ~]$ ssh tripleo-admin@overcloud-compute0
+Register this system with Red Hat Insights: insights-client --register
+Create an account or view all your systems at <a href="https://red.ht/insights-dashboard" class="bare">https://red.ht/insights-dashboard</a>
+Last login: Mon Feb  5 10:54:20 2024 from 172.25.249.11
+[tripleo-admin@overcloud-novacompute-0 ~]$ sudo -i
+[root@overcloud-novacompute-0 ~]# ovs-vsctl show
+1943688a-c727-41a4-b37e-21ae1365b65d
+    Manager "ptcp:6640:127.0.0.1"
+        is_connected: true
+    Bridge br-ex
+        fail_mode: standalone
+        Port br-ex
+            Interface br-ex
+                type: internal
+        Port patch-provnet-7b11bd78-649c-49b7-a08d-bd11c75bd41a-to-br-int
+            Interface patch-provnet-7b11bd78-649c-49b7-a08d-bd11c75bd41a-to-br-int
+                type: patch
+                options: {peer=patch-br-int-to-provnet-7b11bd78-649c-49b7-a08d-bd11c75bd41a}
+        Port ens4
+            Interface ens4</p>
+</div>
+</blockquote>
+</div>
+</li>
+<li>
+<p>To verify incoming traffic, initiate a tcpdump on this interface on the compute node and try to ping the instance from another terminal from the director node.</p>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>[root@overcloud-novacompute-0 ~]# tcpdump -envvi ens4 icmp
+dropped privs to tcpdump
+tcpdump: listening on ens4, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+11:13:36.847633 52:54:00:04:fa:0b &gt; fa:16:3e:60:74:ec, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 64, id 20399, offset 0, flags [DF], proto ICMP (1), length 84)
+    172.25.250.11 &gt; 172.25.250.203: ICMP echo request, id 2, seq 1, length 64
+11:13:37.867835 52:54:00:04:fa:0b &gt; fa:16:3e:60:74:ec, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 64, id 20599, offset 0, flags [DF], proto ICMP (1), length 84)
+    172.25.250.11 &gt; 172.25.250.203: ICMP echo request, id 2, seq 2, length 64
+11:13:38.891757 52:54:00:04:fa:0b &gt; fa:16:3e:60:74:ec, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 64, id 20848, offset 0, flags [DF], proto ICMP (1), length 84)
+    172.25.250.11 &gt; 172.25.250.203: ICMP echo request, id 2, seq 3, length 64
+11:13:39.915886 52:54:00:04:fa:0b &gt; fa:16:3e:60:74:ec, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 64, id 21512, offset 0, flags [DF], proto ICMP (1), length 84)
+    172.25.250.11 &gt; 172.25.250.203: ICMP echo request, id 2, seq 4, length 64</p>
+</div>
+</blockquote>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>You observe that ICMP echo requests arriving at the machine.</p>
+</li>
+<li>
+<p>The presence of ICMP echo requests reaching the external NIC on the compute node indicates the proper functioning of the Distributed Virtual Router (DVR).</p>
+</li>
+<li>
+<p>However, you observed that echo requests are not receiving the echo replies on the director VM.</p>
+</li>
+</ul>
+</div>
+</li>
+</ol>
 </div>
 </div>
 </div>
