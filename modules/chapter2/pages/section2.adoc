@@ -142,7 +142,8 @@ ____
     set_field:0x1->metadata
     set_field:0x1->reg14
 ____
-+ Datapath in OVN represents a logical entity which can either be a switch or a router.
++ 
+Datapath in OVN represents a logical entity which can either be a switch or a router.
 
 11. Log in to the controller node from the director machine and list the datapath bindings.
 +
@@ -450,7 +451,7 @@ ____
 == Evaluation
 
 As the stack user on the director machine, use the lab command to grade your work.
-+
+
 ----
 [stack@director ~]$ lab grade bfx019
 ----
@@ -463,7 +464,7 @@ Provide the gocubsgo as a password if prompted by the grade action.
 == Finish
 
 Run the lab finish command to complete this exercise. This step is important to ensure that resources from current exercises do not impact upcoming exercises.
-+
+
 ----
 [stack@director ~]$ lab finish bfx019
 ----
