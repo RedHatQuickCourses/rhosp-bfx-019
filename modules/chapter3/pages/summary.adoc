@@ -1,0 +1,34 @@
+= Summary
+
+*Checke ARP Cache*:
+
+* Reviewed the ARP cache on the client system (director VM) initiating the connection.
+
+* Identified an entry in the ARP cache, confirming ARP functionality.
+
+*Find where the packet gets lost*:
+
+* Executed tcpdump on the compute node's network interface associated with the br-ex bridge.
+
+* Observed incoming ICMP echo requests but noted the absence of reply packets.
+
+* Located the tap interface connected to the instance.
+
+* Performed tcpdump on this tap interface.
+
+* Discovered that ICMP echo requests reaching the external NIC were not reaching the instance's tap interface, indicating an issue inbetween.
+
+*Trace the packet flow*:
+
+* To delve deeper into the issue, captured an ICMP packet in a file and utilized the ovs-appctl command to trace its journey through the network.
+
+* Noted the processing steps within the OpenFlow pipeline.
+
+* Traced the flow to identify the point where packets were being dropped.
+
+*Identified Logical Flow*:
+
+* Discovered a reference to a logical flow responsible for dropping the packet due to inadequate access control rules.
+
+* Further investigation revealed that this lack of access was rooted in security group rules.
+

@@ -1,3 +1,34 @@
-= Guided solution (page 1 of 2)
+= Guided solution (page 1)
 
-FIXME: Provide step-by-step instructions here to resolve the issue.
+== Objectives
+* Investigate the instance connectivity issue in Red Hat OpenStack Platform.
+* Solve the instance connectivity in the hands-on lab environment.
+
+== Outcomes
+* Investigate why ssh to instance is not working.
+* Fix the ssh to instance failing issue.
+
+== Instructions
+
+1. Break the environment if you have not done it and then step through the fix.
+____
+[student@workstation ~]$ ssh stack@director
+[stack@director ~]$ source overcloudrc
+(overcloud) [stack@director ~]$ lab start bfx019
+Running start action against scenario bfx019
+Run the following command:
+ssh -i /home/stack/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@172.25.250.203
+____
+2. Run the ssh command from the previous lab command output and notice the Connection timed out error. Also run the ping command against instance IP.
+____
+(overcloud) [stack@director ~]$ ssh -i /home/stack/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@172.25.250.203
+*
+ssh: connect to host 172.25.250.203 port 22: Connection timed out
+
+(overcloud) [stack@director ~]$ *ping 172.25.250.203 -c 1
+PING 172.25.250.203 (172.25.250.203) 56(84) bytes of data.
+
+--- 172.25.250.203 ping statistics ---
+1 packets transmitted, 0 received, 100% packet loss, time 0ms
+____
+You observe that both ping and ssh attempts failed which indicates lack of connectivity.
