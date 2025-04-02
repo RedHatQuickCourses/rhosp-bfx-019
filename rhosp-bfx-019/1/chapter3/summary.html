@@ -3,9 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Check your work :: Red Hat OpenStack Networking: Break-fix Practice - Diagnosing Destination Host Unreachable and No Route to Host Errors</title>
-    <link rel="prev" href="section1.html">
-    <link rel="next" href="section3.html">
+    <title>Summary :: Red Hat OpenStack Networking: Break-fix Practice - Diagnosing Destination Host Unreachable and No Route to Host Errors</title>
+    <link rel="prev" href="../chapter2/section2.html">
     <meta name="generator" content="Antora 3.1.3">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <script>var uiRootPath = '../../../_'</script>
@@ -55,16 +54,16 @@
 <ul class="nav-list">
   <li class="nav-item" data-depth="1">
     <button class="nav-item-toggle"></button>
-    <a class="nav-link" href="index.html">What’s in this break-fix?</a>
+    <a class="nav-link" href="../chapter1/index.html">What’s in this break-fix?</a>
 <ul class="nav-list">
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="section1.html">Break-fix activity</a>
-  </li>
-  <li class="nav-item is-current-page" data-depth="2">
-    <a class="nav-link" href="section2.html">Check your work</a>
+    <a class="nav-link" href="../chapter1/section1.html">Break-fix activity</a>
   </li>
   <li class="nav-item" data-depth="2">
-    <a class="nav-link" href="section3.html">Break-fix Scenario</a>
+    <a class="nav-link" href="../chapter1/section2.html">Check your work</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../chapter1/section3.html">Break-fix Scenario</a>
   </li>
 </ul>
   </li>
@@ -88,8 +87,8 @@
   </li>
   <li class="nav-item" data-depth="0">
 <ul class="nav-list">
-  <li class="nav-item" data-depth="1">
-    <a class="nav-link" href="../chapter3/summary.html">Summary</a>
+  <li class="nav-item is-current-page" data-depth="1">
+    <a class="nav-link" href="summary.html">Summary</a>
   </li>
 </ul>
   </li>
@@ -122,8 +121,7 @@
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
     <li><a href="../index.html">Red Hat OpenStack Networking: Break-fix Practice - Diagnosing Destination Host Unreachable and No Route to Host Errors</a></li>
-    <li><a href="index.html">What’s in this break-fix?</a></li>
-    <li><a href="section2.html">Check your work</a></li>
+    <li><a href="summary.html">Summary</a></li>
   </ul>
 </nav>
 </div>
@@ -132,70 +130,73 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">Check your work</h1>
-<div class="sect1">
-<h2 id="_check_your_work_using_the_grading_script"><a class="anchor" href="#_check_your_work_using_the_grading_script"></a>Check your work using the grading script:</h2>
-<div class="sectionbody">
-<div class="listingblock">
-<div class="content">
-<pre>(overcloud) [stack@director ~]$ lab grade bfx019
-Running grade action against scenario bfx019
-cirros@172.25.250.203's password:
-Grading scenario bfx019: PASSED!</pre>
+<h1 class="page">Summary</h1>
+<div class="paragraph">
+<p><strong>Checke ARP Cache</strong>:</p>
 </div>
+<div class="ulist">
+<ul>
+<li>
+<p>Reviewed the ARP cache on the client system (director VM) initiating the connection.</p>
+</li>
+<li>
+<p>Identified an entry in the ARP cache, confirming ARP functionality.</p>
+</li>
+</ul>
 </div>
 <div class="paragraph">
-<p>Instance IP address from the preceding output can differ in your environment.</p>
+<p><strong>Find where the packet gets lost</strong>:</p>
 </div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
+<div class="ulist">
+<ul>
+<li>
+<p>Executed tcpdump on the compute node&#8217;s network interface associated with the br-ex bridge.</p>
+</li>
+<li>
+<p>Observed incoming ICMP echo requests but noted the absence of reply packets.</p>
+</li>
+<li>
+<p>Located the tap interface connected to the instance.</p>
+</li>
+<li>
+<p>Performed tcpdump on this tap interface.</p>
+</li>
+<li>
+<p>Discovered that ICMP echo requests reaching the external NIC were not reaching the instance&#8217;s tap interface, indicating an issue inbetween.</p>
+</li>
+</ul>
+</div>
 <div class="paragraph">
-<p>Provide the gocubsgo as a password.</p>
+<p><strong>Trace the packet flow</strong>:</p>
 </div>
-</td>
-</tr>
-</table>
+<div class="ulist">
+<ul>
+<li>
+<p>To delve deeper into the issue, captured an ICMP packet in a file and utilized the ovs-appctl command to trace its journey through the network.</p>
+</li>
+<li>
+<p>Noted the processing steps within the OpenFlow pipeline.</p>
+</li>
+<li>
+<p>Traced the flow to identify the point where packets were being dropped.</p>
+</li>
+</ul>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_success_criteria"><a class="anchor" href="#_success_criteria"></a>Success Criteria</h2>
-<div class="sectionbody">
 <div class="paragraph">
-<p>Successful completion of this activity requires that ssh to instance is working:</p>
+<p><strong>Identified Logical Flow</strong>:</p>
 </div>
-<div class="listingblock">
-<div class="content">
-<pre>(overcloud) [stack@director ~]$ ssh -i /home/stack/osp_training/.scenario1/scenario-1-key.pem cirros@172.25.250.203
-sign_and_send_pubkey: no mutual signature supported
-cirros@172.25.250.203's password:
-$</pre>
-</div>
-</div>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-<div class="paragraph">
-<p>We recommend treating these scenarios as challenges first and attempting to resolve them independently. Even if you successfully resolve the issue on your own, it is valuable to go through the guided steps to understand the approach demonstrated in this training. Note that the MAC addresses, IP addresses, and other details referenced in the guided steps might vary in your specific scenario.</p>
-</div>
-</td>
-</tr>
-</table>
-</div>
-</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Discovered a reference to a logical flow responsible for dropping the packet due to inadequate access control rules.</p>
+</li>
+<li>
+<p>Further investigation revealed that this lack of access was rooted in security group rules.</p>
+</li>
+</ul>
 </div>
 <nav class="pagination">
-  <span class="prev"><a href="section1.html">Break-fix activity</a></span>
-  <span class="next"><a href="section3.html">Break-fix Scenario</a></span>
+  <span class="prev"><a href="../chapter2/section2.html">Guided solution (page 2)</a></span>
 </nav>
 </article>
   </div>
