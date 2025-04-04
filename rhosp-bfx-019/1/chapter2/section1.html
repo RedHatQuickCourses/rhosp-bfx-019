@@ -173,12 +173,10 @@
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
-<p>[student@workstation ~]$ ssh stack@director
-[stack@director ~]$ source overcloudrc
-(overcloud) [stack@director ~]$ lab start bfx019
+<p>[student@workstation ~]$ lab start bfx019
 Running start action against scenario bfx019
 Run the following command:
-ssh -i /home/stack/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@172.25.250.203</p>
+ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.194</p>
 </div>
 </blockquote>
 </div>
@@ -188,16 +186,16 @@ ssh -i /home/stack/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@1
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
-<p>(overcloud) [stack@director ~]$ ssh -i /home/stack/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@172.25.250.203
+<p>[student@workstation ~]$ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.194
 *
-ssh: connect to host 172.25.250.203 port 22: Connection timed out</p>
+ssh: connect to host 192.168.51.194 port 22: Connection timed out</p>
 </div>
 <div class="paragraph">
-<p>(overcloud) [stack@director ~]$ *ping 172.25.250.203 -c 1
-PING 172.25.250.203 (172.25.250.203) 56(84) bytes of data.</p>
+<p>[student@workstation ~]$ ping 192.168.51.194 -c 1
+PING 192.168.51.194 (192.168.51.194) 56(84) bytes of data.</p>
 </div>
 <div class="paragraph">
-<p>--- 172.25.250.203 ping statistics ---
+<p>--- 192.168.51.194 ping statistics ---
 1 packets transmitted, 0 received, 100% packet loss, time 0ms</p>
 </div>
 </blockquote>
@@ -207,21 +205,21 @@ PING 172.25.250.203 (172.25.250.203) 56(84) bytes of data.</p>
 </div>
 </li>
 <li>
-<p>Access the overcloud environment and determine the specific compute node where the instance is currently running.</p>
+<p>Access the RHOSO environment and determine the specific compute node where the instance is currently running.</p>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
-<p>(overcloud) [stack@director ~]$ openstack server list --long -c Name -c Status -c Host
------------------------------------------------------------------
-| Name               | Status | Host                                |
------------------------------------------------------------------
-| scenario-bfx019-vm | ACTIVE | overcloud-novacompute-1.localdomain |
------------------------------------------------------------------</p>
+<p>[student@workstation ~]$ oc exec -n openstack openstackclient&#8201;&#8212;&#8201;openstack server list --long -c Name -c Status -c Host
+-------------------------------------------------------
+| Name               | Status | Host                      |
+-------------------------------------------------------
+| scenario-bfx019-vm | ACTIVE | compute01.srv.example.com |
+-------------------------------------------------------</p>
 </div>
 </blockquote>
 </div>
 <div class="paragraph">
-<p>Observe that it is overcloud-novacompute-1 in the above output, it my differ in your case.</p>
+<p>Observe that it is compute01 in the above output, it my differ in your case.</p>
 </div>
 </li>
 <li>
@@ -229,11 +227,14 @@ PING 172.25.250.203 (172.25.250.203) 56(84) bytes of data.</p>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
-<p>(overcloud) [stack@director ~]$ ssh tripleo-admin@overcloud-compute1
-Register this system with Red Hat Insights: insights-client --register
+<p>[student@workstation ~]$ ssh <a href="mailto:root@compute01.srv.example.com">root@compute01.srv.example.com</a>
+Activate the web console with: systemctl enable --now cockpit.socket</p>
+</div>
+<div class="paragraph">
+<p>Register this system with Red Hat Insights: insights-client --register
 Create an account or view all your systems at <a href="https://red.ht/insights-dashboard" class="bare">https://red.ht/insights-dashboard</a>
-Last login: Sat Mar 16 09:49:27 2024 from 172.25.249.11
-[tripleo-admin@overcloud-novacompute-1 ~]$</p>
+Last login: Fri Apr  4 08:32:38 2025 from 192.168.51.254
+[root@compute01 ~]#</p>
 </div>
 </blockquote>
 </div>
@@ -242,44 +243,51 @@ Last login: Sat Mar 16 09:49:27 2024 from 172.25.249.11
 </div>
 </li>
 <li>
-<p>Check the route taken to reach the instance from the director VM.</p>
+<p>Check the route taken to reach the instance from the utility VM.</p>
+<div class="paragraph">
+<p>Only the <code>utility</code> server has configured IP address which belongs to the same Layer 2 (L2) domain as the Floating IP associated to the VM.</p>
+</div>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
-<p>(overcloud) [stack@director ~]$ ip route get 172.25.250.203
-172.25.250.203 dev eth0 src 172.25.250.11 uid 1003</p>
+<p>[student@workstation ~]$ ssh lab@utility
+Register this system with Red Hat Insights: insights-client --register
+Create an account or view all your systems at <a href="https://red.ht/insights-dashboard" class="bare">https://red.ht/insights-dashboard</a>
+Last login: Wed Apr  2 06:32:08 2025 from 172.25.250.9
+[lab@utility ~]$ ip route get 192.168.51.194
+192.168.51.194 dev eth2 src 192.168.51.254 uid 1002</p>
 </div>
 </blockquote>
 </div>
 <div class="paragraph">
-<p>The above output shows that the route goes through eth0.</p>
+<p>The above output shows that the route goes through eth2.</p>
 </div>
 </li>
 <li>
-<p>Confirm that the director VM and the instance&#8217;s floating IP are on the same Layer 2 (L2) domain, specifically on the 172.25.250.0 subnet.</p>
+<p>Confirm that the utility server and the instance&#8217;s floating IP are on the same Layer 2 (L2) domain, specifically on the 172.25.250.0 subnet.</p>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
-<p>(overcloud) [stack@director ~]$ ip addr show eth0
-2: eth0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000
-    link/ether 52:54:00:04:fa:0b brd ff:ff:ff:ff:ff:ff
-    altname enp0s3
-    altname ens3
-    inet 172.25.250.11/24 brd 172.25.250.255 scope global noprefixroute eth0
+<p>[lab@utility ~]$ ip addr show eth0
+4: eth2: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 52:54:00:02:33:fe brd ff:ff:ff:ff:ff:ff
+    altname enp0s5
+    altname ens5
+    inet 192.168.51.254/24 brd 192.168.51.255 scope global noprefixroute eth2
        valid_lft forever preferred_lft forever
-    inet6 fe80::5054:ff:fe04:fa0b/64 scope link
+    inet6 fe80::5ad2:878f:6d6a:530d/64 scope link noprefixroute
        valid_lft forever preferred_lft forever</p>
 </div>
 </blockquote>
 </div>
 </li>
 <li>
-<p>Examine the ARP cache on the director VM.</p>
+<p>Examine the ARP cache on the utility server.</p>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
-<p>(overcloud) [stack@director ~]$ ip neighbor | grep 172.25.250.203
-172.25.250.203 dev eth0 lladdr fa:16:3e:60:74:ec STALE</p>
+<p>[lab@utility ~]$ ip neighbor | grep 192.168.51.194
+192.168.51.194 dev eth2 lladdr fa:16:3e:42:c2:37 STALE</p>
 </div>
 </blockquote>
 </div>
@@ -299,46 +307,50 @@ Last login: Sat Mar 16 09:49:27 2024 from 172.25.249.11
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
-<p>(overcloud) [stack@director ~]$ ssh tripleo-admin@overcloud-compute0
-Register this system with Red Hat Insights: insights-client --register
+<p>[student@workstation ~]$ ssh <a href="mailto:root@compute01.srv.example.com">root@compute01.srv.example.com</a>
+Activate the web console with: systemctl enable --now cockpit.socket</p>
+</div>
+<div class="paragraph">
+<p>Register this system with Red Hat Insights: insights-client --register
 Create an account or view all your systems at <a href="https://red.ht/insights-dashboard" class="bare">https://red.ht/insights-dashboard</a>
-Last login: Mon Feb  5 10:54:20 2024 from 172.25.249.11
-[tripleo-admin@overcloud-novacompute-0 ~]$ sudo -i
-[root@overcloud-novacompute-0 ~]# ovs-vsctl show
-1943688a-c727-41a4-b37e-21ae1365b65d
+Last login: Fri Apr  4 08:41:58 2025 from 192.168.51.254</p>
+</div>
+<div class="paragraph">
+<p>[root@compute01 ~]# ovs-vsctl show
+54ee4d39-0f5f-4be7-9253-e7963bf0ec50
     Manager "ptcp:6640:127.0.0.1"
         is_connected: true
     Bridge br-ex
         fail_mode: standalone
+        Port patch-provnet-84157851-395c-40eb-a3ec-6b512dd58759-to-br-int
+            Interface patch-provnet-84157851-395c-40eb-a3ec-6b512dd58759-to-br-int
+                type: patch
+                options: {peer=patch-br-int-to-provnet-84157851-395c-40eb-a3ec-6b512dd58759}
         Port br-ex
             Interface br-ex
                 type: internal
-        Port patch-provnet-7b11bd78-649c-49b7-a08d-bd11c75bd41a-to-br-int
-            Interface patch-provnet-7b11bd78-649c-49b7-a08d-bd11c75bd41a-to-br-int
-                type: patch
-                options: {peer=patch-br-int-to-provnet-7b11bd78-649c-49b7-a08d-bd11c75bd41a}
-        Port ens4
-            Interface ens4</p>
+        Port eth2
+            Interface eth2</p>
 </div>
 </blockquote>
 </div>
 </li>
 <li>
-<p>To verify incoming traffic, initiate a tcpdump on this interface on the compute node and try to ping the instance from another terminal from the director node.</p>
+<p>To verify incoming traffic, initiate a tcpdump on this interface on the compute node and try to ping the instance from another terminal from the workstation node.</p>
 <div class="quoteblock">
 <blockquote>
 <div class="paragraph">
-<p>[root@overcloud-novacompute-0 ~]# tcpdump -envvi ens4 icmp
+<p>[root@compute01 ~]# tcpdump -envvi eth2 icmp
 dropped privs to tcpdump
-tcpdump: listening on ens4, link-type EN10MB (Ethernet), snapshot length 262144 bytes
-11:13:36.847633 52:54:00:04:fa:0b &gt; fa:16:3e:60:74:ec, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 64, id 20399, offset 0, flags [DF], proto ICMP (1), length 84)
-    172.25.250.11 &gt; 172.25.250.203: ICMP echo request, id 2, seq 1, length 64
-11:13:37.867835 52:54:00:04:fa:0b &gt; fa:16:3e:60:74:ec, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 64, id 20599, offset 0, flags [DF], proto ICMP (1), length 84)
-    172.25.250.11 &gt; 172.25.250.203: ICMP echo request, id 2, seq 2, length 64
-11:13:38.891757 52:54:00:04:fa:0b &gt; fa:16:3e:60:74:ec, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 64, id 20848, offset 0, flags [DF], proto ICMP (1), length 84)
-    172.25.250.11 &gt; 172.25.250.203: ICMP echo request, id 2, seq 3, length 64
-11:13:39.915886 52:54:00:04:fa:0b &gt; fa:16:3e:60:74:ec, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 64, id 21512, offset 0, flags [DF], proto ICMP (1), length 84)
-    172.25.250.11 &gt; 172.25.250.203: ICMP echo request, id 2, seq 4, length 64</p>
+tcpdump: listening on eth2, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+08:51:14.195753 52:54:00:02:33:fe &gt; fa:16:3e:42:c2:37, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 63, id 5314, offset 0, flags [DF], proto ICMP (1), length 84)
+    172.25.250.9 &gt; 192.168.51.194: ICMP echo request, id 3, seq 1, length 64
+08:51:15.231845 52:54:00:02:33:fe &gt; fa:16:3e:42:c2:37, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 63, id 5801, offset 0, flags [DF], proto ICMP (1), length 84)
+    172.25.250.9 &gt; 192.168.51.194: ICMP echo request, id 3, seq 2, length 64
+08:51:16.255850 52:54:00:02:33:fe &gt; fa:16:3e:42:c2:37, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 63, id 6204, offset 0, flags [DF], proto ICMP (1), length 84)
+    172.25.250.9 &gt; 192.168.51.194: ICMP echo request, id 3, seq 3, length 64
+08:51:17.279535 52:54:00:02:33:fe &gt; fa:16:3e:42:c2:37, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 63, id 6347, offset 0, flags [DF], proto ICMP (1), length 84)
+    172.25.250.9 &gt; 192.168.51.194: ICMP echo request, id 3, seq 4, length 64</p>
 </div>
 </blockquote>
 </div>
@@ -351,7 +363,7 @@ tcpdump: listening on ens4, link-type EN10MB (Ethernet), snapshot length 262144 
 <p>The presence of ICMP echo requests reaching the external NIC on the compute node indicates the proper functioning of the Distributed Virtual Router (DVR).</p>
 </li>
 <li>
-<p>However, you observed that echo requests are not receiving the echo replies on the director VM.</p>
+<p>However, you observed that echo requests are not receiving the echo replies on the workstation VM.</p>
 </li>
 </ul>
 </div>

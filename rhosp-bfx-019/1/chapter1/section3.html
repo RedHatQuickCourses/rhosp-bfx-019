@@ -157,13 +157,11 @@
 <div class="paragraph">
 <p>They noticed the following error:</p>
 </div>
-<div class="quoteblock">
-<blockquote>
-<div class="paragraph">
-<p>(overcloud) [stack@director ~]$ ssh -i /home/stack/osp_training/.scenariobfx022/scenario-bfx022-key.pem cirros@172.25.250.186
-ssh: connect to host 172.25.250.186 port 22: Connection timed out</p>
+<div class="listingblock">
+<div class="content">
+<pre>[student@workstation ~]$ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.194
+ssh: connect to host 192.168.51.194 port 22: Connection timed out</pre>
 </div>
-</blockquote>
 </div>
 </div>
 </div>
@@ -177,21 +175,20 @@ ssh: connect to host 172.25.250.186 port 22: Connection timed out</p>
 </li>
 </ul>
 </div>
-<div class="quoteblock">
-<blockquote>
-<div class="paragraph">
-<p>[student@workstation ~]$ ssh stack@director</p>
-</div>
-<div class="paragraph">
-<p>[stack@director ~]$ source overcloudrc</p>
-</div>
-<div class="paragraph">
-<p>(overcloud) [stack@director ~]$ lab start bfx019
+<div class="listingblock">
+<div class="content">
+<pre>[student@workstation ~]$ oc login -u admin -p redhatocp https://api.ocp4.example.com:6443
+Login successful.
+
+You have access to 76 projects, the list has been suppressed. You can list all projects with 'oc projects'
+
+Using project "openstack".
+
+[student@workstation ~]$ lab start bfx019
 Running start action against scenario bfx019
 Run the following command:
-ssh -i /home/stack/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@172.25.250.203</p>
+ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.194</pre>
 </div>
-</blockquote>
 </div>
 <div class="paragraph">
 <p>In the preceding output, ip address can differ in your lab environemnt.</p>
@@ -206,13 +203,11 @@ ssh -i /home/stack/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@1
 </li>
 </ul>
 </div>
-<div class="quoteblock">
-<blockquote>
-<div class="paragraph">
-<p>(overcloud) [stack@director ~]$ ssh -i /home/stack/osp_training/.scenariobfx022/scenario-bfx022-key.pem cirros@172.25.250.186
-ssh: connect to host 172.25.250.186 port 22: Connection timed out</p>
+<div class="listingblock">
+<div class="content">
+<pre>[student@workstation ~]$ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.194
+ssh: connect to host 192.168.51.194 port 22: Connection timed out</pre>
 </div>
-</blockquote>
 </div>
 </div>
 </div>
