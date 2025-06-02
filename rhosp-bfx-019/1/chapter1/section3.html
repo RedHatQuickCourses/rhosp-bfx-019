@@ -171,7 +171,7 @@ ssh: connect to host 192.168.51.194 port 22: Connection timed out</pre>
 <div class="ulist">
 <ul>
 <li>
-<p>Recreate this scenario by running the lab` script on director VM as stack user:</p>
+<p>Recreate this scenario by running the <code>lab</code> script on director VM as stack user:</p>
 </li>
 </ul>
 </div>
@@ -208,6 +208,21 @@ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros
 <pre>[student@workstation ~]$ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.194
 ssh: connect to host 192.168.51.194 port 22: Connection timed out</pre>
 </div>
+</div>
+<div class="paragraph">
+<p>FIXME: accommodate below steps:
+To run any of the break/fix scenarios in this repo you need to:</p>
+</div>
+<div class="paragraph">
+<p>clone repository
+$ mkdir osp_training
+$ cd osp_training
+$ git clone <a href="https://github.com/cubeek/osp-workshop-2022.git" class="bare">https://github.com/cubeek/osp-workshop-2022.git</a> scenarios_repo
+$ cd scenarios_repo
+prepare inventory file for Ansible:
+$ bash osp-workshop-2024.sh -s dataplanenodeset-openstack-data-plane -c ~/.auth/ocp4-kubeconfig inventory
+now You can run scenarios with command like:
+$ ./lab start bfx019</p>
 </div>
 </div>
 </div>
