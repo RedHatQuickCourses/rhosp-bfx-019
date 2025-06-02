@@ -20,7 +20,7 @@ ssh: connect to host 192.168.51.194 port 22: Connection timed out
 
 == Recreate scenario
 
-* Recreate this scenario by running the lab` script on director VM as stack user:
+* Recreate this scenario by running the `lab` script on director VM as stack user:
 ----
 [student@workstation ~]$ oc login -u admin -p redhatocp https://api.ocp4.example.com:6443
 Login successful.
@@ -44,3 +44,18 @@ In the preceding output, ip address can differ in your lab environemnt.
 [student@workstation ~]$ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.194
 ssh: connect to host 192.168.51.194 port 22: Connection timed out
 ----
+
+
+
+FIXME: accommodate below steps:
+To run any of the break/fix scenarios in this repo you need to:
+
+clone repository
+$ mkdir osp_training
+$ cd osp_training
+$ git clone https://github.com/cubeek/osp-workshop-2022.git scenarios_repo
+$ cd scenarios_repo
+prepare inventory file for Ansible:
+$ bash osp-workshop-2024.sh -s dataplanenodeset-openstack-data-plane -c ~/.auth/ocp4-kubeconfig inventory
+now You can run scenarios with command like:
+$ ./lab start bfx019
