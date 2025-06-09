@@ -18,25 +18,36 @@ oc exec -n openstack openstackclient -- openstack port list --server scenario-bf
 +--------------------------------------+------+-------------------+-------------------------------------------------------------------------------+--------+
 ----
 
-. Derive the tap device's name by appending "tap" to the initial string from the port ID and check it's network interface setting.
+. Derive the tap device's name by appending "tap" to the initial string from the port ID and check it's network interface setting **on the compute node**.
 +
 .Sample output
 ----
-[root@compute01 ~]# ip link show tap382179f5-45
+[root@compute02 ~]# ip link show tap382179f5-45
 14: tap382179f5-45: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1442 qdisc noqueue master ovs-system state UNKNOWN mode DEFAULT group default qlen 1000
     link/ether fe:16:3e:ef:f8:14 brd ff:ff:ff:ff:ff:ff
-[root@compute01 ~]#
+[root@compute02 ~]#
 ----
 +
-Note how tap device’s name is derived by appending **tap** to the initial string **382179f5-45** from the port ID. You need to replace this string as per the port ID in your lab.
+Note how tap device’s name is derived by appending **tap** to the initial string **382179f5-45** from the port ID. 
+You need to replace this string as per the port ID in your lab.
 
-. Execute a tcpdump on this tap interface on attempting to ping the instance from workstation VM.
+. Run a **tcpdump** on the tap interface of the **compute** node while initiating a **ping** to the instance from the **workstation** VM.
 +
 .Sample output
 ----
-[root@compute01 ~]# tcpdump -envvi tap382179f5-45
+[root@compute02 ~]# tcpdump -envvi tap382179f5-45
 dropped privs to tcpdump
 tcpdump: listening on tap382179f5-45, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+----
++
+----
+[student@workstation ~]$ ping 192.168.51.170 -c 1
+PING 192.168.51.170 (192.168.51.170) 56(84) bytes of data.
+
+--- 192.168.51.170 ping statistics ---
+1 packets transmitted, 0 received, 100% packet loss, time 0ms
+
+[student@workstation ~]$ 
 ----
 +
 You see that on ICMP echo requests are visible on the external NIC, they are not being delivered to the instance (via tap interface). The issue seems to be occurring within the br-int bridge where packets appear to be lost.
@@ -48,11 +59,11 @@ You see that on ICMP echo requests are visible on the external NIC, they are not
 sudo tcpdump -i <external_interface> icmp -c 1 -w icmp-request.pcap
 ----
 +
-Replace `<external_interface>` with the name of the appropriate external network interface (e.g., `eth2`, `ens4`, etc.) associated with br-ex.
+**Replace <external_interface>** with the name of the appropriate external network interface (e.g., `eth2`, `ens4`, etc.) associated with br-ex.
 +
 .Sample output
 ----
-[root@compute01 ~]# tcpdump -i eth2 icmp -c1 -w icmp-request.pcap
+[root@compute02 ~]# tcpdump -i eth2 icmp -c1 -w icmp-request.pcap
 dropped privs to tcpdump
 tcpdump: listening on eth2, link-type EN10MB (Ethernet), snapshot length 262144 bytes
 1 packet captured
@@ -67,13 +78,13 @@ tcpdump: listening on eth2, link-type EN10MB (Ethernet), snapshot length 262144 
 ping -c 1 <instance_ip>
 ----
 +
-Replace `<instance_ip>` with the IP address of the target instance.
+**Replace <instance_ip>** with the IP address of the target instance.
 
 . Once the ping is sent, the `tcpdump` command on the compute node will capture the ICMP request and save it to the file `icmp-request.pcap`.
 +
 .Sample output
 ----
-[root@compute01 ~]# tcpdump -i eth2 icmp -c1 -w icmp-request.pcap
+[root@compute02 ~]# tcpdump -i eth2 icmp -c1 -w icmp-request.pcap
 dropped privs to tcpdump
 tcpdump: listening on eth2, link-type EN10MB (Ethernet), snapshot length 262144 bytes
 1 packet captured
@@ -81,7 +92,7 @@ tcpdump: listening on eth2, link-type EN10MB (Ethernet), snapshot length 262144 
 0 packets dropped by kernel
 ----
 
-. Verify the generated file content by reading back the stored packet using tcpdump command.
+. Verify the generated file content by reading back the stored packet using tcpdump command **on the compute node**.
 +
 [source, bash]
 ----
@@ -90,7 +101,7 @@ tcpdump -r icmp-request.pcap
 +
 .Sample output
 ----
-[root@compute01 ~]# tcpdump -r icmp-request.pcap
+[root@compute02 ~]# tcpdump -r icmp-request.pcap
 reading from file icmp-request.pcap, link-type EN10MB (Ethernet), snapshot length 262144
 dropped privs to tcpdump
 08:59:57.952623 IP workstation.lab.example.com > 192.168.51.194: ICMP echo request, id 5, seq 1, length 64
@@ -105,11 +116,21 @@ ovs-pcap icmp-request.pcap
 +
 .Sample output
 ----
-[root@compute01 ~]# ovs-pcap icmp-request.pcap
+[root@compute02 ~]# ovs-pcap icmp-request.pcap
 fa163e42c2375254000233fe0800450000546de440003f013337ac19fa09c0a833c208007f98000500018d9fef67000000002e870e0000000000101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f3031323334353637
 ----
 +
-ovs-pcap package is available form the *fast-datapath-for-rhel-9-x86_64-rpms* channel.
+* **ovs-pcap** command is provided by **openvswitch-test** package.
+* openvswitch-test package is available form the *fast-datapath-for-rhel-9-x86_64-rpms* channel.
+* Subscribe the compute node and enable fast-datapath-for-rhel-9-x86_64-rpms channel.
+* Install **openvswitch3.3-test-3.3.0-49.el9fdp.noarch** package.
++
+[source, bash]
+----
+subscription-manager register
+subscription-manager repos --enable=fast-datapath-for-rhel-9-x86_64-rpms
+dnf install openvswitch3.3-test-3.3.0-49.el9fdp.noarch
+----
 
 . Identify the OpenFlow number corresponding to the external network interface (eth2). This is important for later tracing.
 +
@@ -120,7 +141,7 @@ ovs-ofctl show br-ex
 +
 .Sample output
 ----
-[root@compute01 ~]# ovs-ofctl show br-ex
+[root@compute02 ~]# ovs-ofctl show br-ex
 OFPT_FEATURES_REPLY (xid=0x2): dpid:000052540002331f
 n_tables:254, n_buffers:0
 capabilities: FLOW_STATS TABLE_STATS PORT_STATS QUEUE_STATS ARP_MATCH_IP
@@ -151,7 +172,7 @@ ovs-appctl ofproto/trace br-ex in_port=1 $(ovs-pcap icmp-request.pcap) | less
 +
 .Sample output
 ----
-[root@compute01 ~]# ovs-appctl ofproto/trace br-ex in_port=1 $(ovs-pcap icmp-request.pcap) | less
+[root@compute02 ~]# ovs-appctl ofproto/trace br-ex in_port=1 $(ovs-pcap icmp-request.pcap) | less
 Flow: icmp,in_port=1,vlan_tci=0x0000,dl_src=52:54:00:02:33:fe,dl_dst=fa:16:3e:42:c2:37,nw_src=172.25.250.9,nw_dst=192.168.51.194,nw_tos=0,nw_ecn=0,nw_ttl=63,nw_frag=no,icmp_type=8,icmp_code=0
 
 bridge("br-ex")
@@ -176,31 +197,31 @@ bridge("br-int")
 * As observed in the provided snippet, the packet trajectory involves passing through the br-ex bridge and utilizing the flow table 0.
 * In this context, the process involves regular switching operations.
 * The packet journey leads it to be forwarded to the br-int bridge.
-* This action is facilitated via the in_port=6 (this might differ in your output), which corresponds to the patch port connecting br-ex and br-int.
+* This action is facilitated via the in_port=8 (this might differ in your output), which corresponds to the patch port connecting br-ex and br-int.
 
-. We can now run the same command with in_port=6 and pass the packet to br-int this time.
+. We can now run the same command with in_port=8 and pass the packet to br-int this time.
 +
 [source, bash]
 ----
-ovs-appctl ofproto/trace br-int in_port=14 $(ovs-pcap icmp-request.pcap) | less
+ovs-appctl ofproto/trace br-int in_port=8 $(ovs-pcap icmp-request.pcap) | less
 ----
 +
 .Sample output
 ----
-[root@compute01 ~]# ovs-appctl ofproto/trace br-int in_port=14 $(ovs-pcap icmp-request.pcap) | less
-Flow: icmp,in_port=6,vlan_tci=0x0000,dl_src=52:54:00:02:33:fe,dl_dst=fa:16:3e:42:c2:37,nw_src=172.25.250.9,nw_dst=192.168.51.194,nw_tos=0,nw_ecn=0,nw_ttl=63,nw_frag=no,icmp_type=8,icmp_code=0
+[root@compute02 ~]# ovs-appctl ofproto/trace br-int in_port=8 $(ovs-pcap icmp-request.pcap) | less
+Flow: icmp,in_port=8,vlan_tci=0x0000,dl_src=52:54:00:02:33:fe,dl_dst=fa:16:3e:a7:e1:96,nw_src=172.25.250.9,nw_dst=192.168.51.170,nw_tos=0,nw_ecn=0,nw_ttl=63,nw_frag=no,icmp_type=8,icmp_code=0
 
 bridge("br-int")
 ----------------
- 0. in_port=6,vlan_tci=0x0000/0x1000, priority 100, cookie 0xecf8ffe
-    set_field:0x5/0xffff->reg13
-    set_field:0x2->reg11
-    set_field:0x3->reg12
+ 0. in_port=8,vlan_tci=0x0000/0x1000, priority 100, cookie 0x8bb92bff
+    set_field:0x8/0xffff->reg13
+    set_field:0x7->reg11
+    set_field:0x9->reg12
     set_field:0x1->metadata
     set_field:0x1->reg14
     set_field:0/0xffff0000->reg13
     resubmit(,8)
- 8. metadata=0x1, priority 50, cookie 0xa58a96bc
+ 8. metadata=0x1, priority 50, cookie 0xfcfd512c
     set_field:0/0x1000->reg10
     resubmit(,73)
     73. No match.
@@ -218,6 +239,8 @@ Datapath in OVN represents a logical entity which can either be a switch or a ro
 
 . Use ovsdbserver-sb POD to list the datapath bindings.
 +
+Run the below command on the workstation VM:
++
 [source, bash]
 ----
 oc exec -n openstack $(oc get pods -n openstack -l service=ovsdbserver-sb -o name | head -n 1) -- ovn-sbctl --no-leader-only list datapath_binding
@@ -226,23 +249,28 @@ oc exec -n openstack $(oc get pods -n openstack -l service=ovsdbserver-sb -o nam
 .Sample output
 ----
 [student@workstation ~]$ oc exec -n openstack $(oc get pods -n openstack -l service=ovsdbserver-sb -o name | head -n 1) -- ovn-sbctl --no-leader-only list datapath_binding
-_uuid               : c0a9a925-f709-41a4-bf23-66be44974e6f
-external_ids        : {always_learn_from_arp_request="false", logical-router="93f88392-3018-43a6-8bd3-ba9d8fd3eaa1", name=neutron-8f02eb5b-2c5d-4fb9-9c77-189c1f498a9f, name2=scenario-bfx019-router}
+_uuid               : 1e76c039-73e8-4e9b-8259-c49f399f5878
+external_ids        : {always_learn_from_arp_request="false", logical-router="b1a6d89d-38b4-4542-a9ca-747a7d0967d5", name=neutron-98e12907-fbbd-4f9c-a479-42b42e94d611, name2=scenario-bfx019-router}
 load_balancers      : []
 tunnel_key          : 3
 
-_uuid               : 08d7eb0e-0f7b-4a89-a417-6c288c5aa088
-external_ids        : {logical-switch="44947ae8-53ad-47df-95f2-b5832e451e38", name=neutron-79567bea-bb96-4a53-b4e1-008c273f36c6, name2=scenario-bfx019-network}
+_uuid               : e53c886d-6da3-4829-95a0-4068be40050b
+external_ids        : {logical-switch="c96a9d53-7d7e-4bf6-8855-63600060b7aa", name=neutron-795607c7-30ae-4acf-9b83-ef207f17a781, name2=scenario-bfx019-network}
 load_balancers      : []
 tunnel_key          : 2
 
-_uuid               : de1652f7-c8f4-4ab7-8507-c99c266c2418
-external_ids        : {logical-switch="5cdf8fa8-af0d-474d-b2d2-1caeac0c5599", name=neutron-ee961465-e812-4563-aaa8-05adb3476889, name2=public}
+_uuid               : ae1a7b22-45fc-44e3-a4b1-ef4f2f7a4e46
+external_ids        : {logical-switch="c919dbb1-f775-4ca1-9bde-351f7d14c2ef", name=neutron-eb22ba34-3201-467b-9ce2-451ee53790e9, name2=public}
 load_balancers      : []
 tunnel_key          : 1
 ----
 +
-The above output tunnel_key 1 is a logical switch which maps to the Neutron network id de1652f7-c8f4-4ab7-8507-c99c266c2418 and Neutron network name public. A Logical switch in OVN is a network in Neutron. Hence datapath 1 is the public switch in OVN.
+In the above output:
++
+* `tunnel_key 1` is a logical switch which maps to the Neutron network id `ee961465-e812-4563-aaa8-05adb3476889`
+* Neutron network name is `public`. 
+* A Logical switch in OVN is a network in Neutron. 
+* Hence datapath 1 is the public switch in OVN.
 
 . Match the tunnel key with the Datapath_Binding table to identify the logical switch (datapath) associated with the packet.
 +
@@ -251,13 +279,13 @@ The above output tunnel_key 1 is a logical switch which maps to the Neutron netw
 oc exec -n openstack $(oc get pods -n openstack -l service=ovsdbserver-sb -o name | head -n 1) -- ovn-sbctl --no-leader-only find datapath_binding tunnel_key=1
 ----
 +
-FIXME: Make sure you are using correct tunnel_key
+Make sure you are using correct tunnel_key
 +
 .Sample output
 ----
-[student@workstation ~]$ oc exec -n openstack $(oc get pods -n openstack -l service=ovsdbserver-sb -o name | head -n 1) -- ovn-sbctl --no-leader-only find datapath_binding tunnel_key=1                                            
-_uuid               : de1652f7-c8f4-4ab7-8507-c99c266c2418
-external_ids        : {logical-switch="5cdf8fa8-af0d-474d-b2d2-1caeac0c5599", name=neutron-ee961465-e812-4563-aaa8-05adb3476889, name2=public}
+[student@workstation ~]$ oc exec -n openstack $(oc get pods -n openstack -l service=ovsdbserver-sb -o name | head -n 1) -- ovn-sbctl --no-leader-only find datapath_binding tunnel_key=1
+_uuid               : ae1a7b22-45fc-44e3-a4b1-ef4f2f7a4e46
+external_ids        : {logical-switch="c919dbb1-f775-4ca1-9bde-351f7d14c2ef", name=neutron-eb22ba34-3201-467b-9ce2-451ee53790e9, name2=public}
 load_balancers      : []
 tunnel_key          : 1
 ----
@@ -269,27 +297,27 @@ tunnel_key          : 1
 oc exec -n openstack $(oc get pods -n openstack -l service=ovsdbserver-sb -o name | head -n 1) -- ovn-sbctl --no-leader-only find Port_Binding datapath=UUID
 ----
 +
-FIXME: Replace appropriate string for UUID.
+Replace appropriate string for UUID.
 +
 .Sample output
 ----
-[student@workstation ~]$ oc exec -n openstack $(oc get pods -n openstack -l service=ovsdbserver-sb -o name | head -n 1) -- ovn-sbctl --no-leader-only find Port_Binding datapath=de1652f7-c8f4-4ab7-8507-c99c266c2418
+[student@workstation ~]$ oc exec -n openstack $(oc get pods -n openstack -l service=ovsdbserver-sb -o name | head -n 1) -- ovn-sbctl --no-leader-only find Port_Binding datapath=ae1a7b22-45fc-44e3-a4b1-ef4f2f7a4e46
 ----
 
 . Look for the port binding that has tunnel key 1 in the output of the above command.
 +
 ----
 ...
-_uuid               : 0ecf8ffe-6a02-44f3-9e34-2a4922e8c683
+_uuid               : 8bb92bff-5354-4bea-b04e-8e3ec2f7b6af
 additional_chassis  : []
 additional_encap    : []
 chassis             : []
-datapath            : de1652f7-c8f4-4ab7-8507-c99c266c2418
+datapath            : ae1a7b22-45fc-44e3-a4b1-ef4f2f7a4e46
 encap               : []
 external_ids        : {}
 gateway_chassis     : []
 ha_chassis_group    : []
-logical_port        : provnet-84157851-395c-40eb-a3ec-6b512dd58759
+logical_port        : provnet-83c416fc-6495-44e9-af91-974e17bb8562
 mac                 : [unknown]
 mirror_rules        : []
 nat_addresses       : []
@@ -306,100 +334,105 @@ virtual_parent      : []
 . . .
 ----
 +
-* This means the incoming port is the port with tunnel key 1 on data path de1652f7-c8f4-4ab7-8507-c99c266c2418.
+* This means the incoming port is the port with `tunnel_key 1` on data path `ae1a7b22-45fc-44e3-a4b1-ef4f2f7a4e46`.
 * These two numbers uniquely identify the port in the environment.
 * We can now see how the packet is being processed in the pipeline.
 
-. Re-run the previous ovs-appctl command and scroll through the output.
+. Re-run the previous ovs-appctl command **on the compute node** and scroll through the output.
 +
 [source, bash]
 ----
-ovs-appctl ofproto/trace br-int in_port=14 $(ovs-pcap icmp-request.pcap) | less
+ovs-appctl ofproto/trace br-int in_port=8 $(ovs-pcap icmp-request.pcap) | less
 ----
 +
 .Sample output
 ----
-[root@compute01 ~]# ovs-appctl ofproto/trace br-int in_port=14 $(ovs-pcap icmp-request.pcap) | less
+[root@compute02 ~]# ovs-appctl ofproto/trace br-int in_port=8 $(ovs-pcap icmp-request.pcap) | less
 . . .
-    set_field:0x1->metadata
-. . .
+    set_field:0x3->metadata
+. . . 
 bridge("br-int")
 ----------------
     thaw
         Resuming from table 13
-13. metadata=0x3, priority 0, cookie 0xba37e6fb
+13. metadata=0x3, priority 0, cookie 0x8fced113
     resubmit(,14)
-14. metadata=0x3, priority 0, cookie 0x7729b8bb
+14. metadata=0x3, priority 0, cookie 0x7615a127
     resubmit(,15)
-15. ip,reg14=0x1,metadata=0x3,nw_dst=192.168.51.194, priority 100, cookie 0xbcd24535
-    ct(commit,table=16,zone=NXM_NX_REG11[0..15],nat(dst=192.168.110.95))
-    nat(dst=192.168.110.95)
+15. ip,reg14=0x1,metadata=0x3,nw_dst=192.168.51.170, priority 100, cookie 0x832d5779
+    ct(commit,table=16,zone=NXM_NX_REG11[0..15],nat(dst=192.168.110.191))
+    nat(dst=192.168.110.191)
      -> A clone of the packet is forked to recirculate. The forked pipeline will be resumed at table 16.
      -> Sets the packet to an untracked state, and clears all the conntrack fields.
+
+Final flow: recirc_id=0x87,eth,icmp,reg0=0xfa16,reg1=0x3e602330,reg9=0x4,reg11=0x1,reg12=0x4,reg14=0x1,metadata=0x3,in_port=8,vlan_tci=0x0000,dl_src=52:54:00:02:33:fe,dl_dst=fa:16:3e:a7:e1:96,nw_src=172.25.250.9,nw_dst=192.168.51.170,nw_tos=0,nw_ecn=0,nw_ttl=63,nw_frag=no,icmp_type=8,icmp_code=0
+Megaflow: recirc_id=0x87,eth,ip,in_port=8,nw_dst=192.168.51.170,nw_frag=no
+Datapath actions: ct(commit,zone=1,nat(dst=192.168.110.191)),recirc(0x88)
 
 . . .
 ----
 +
-* The metadata field would be changed (FIXME: 0x1 in the above output but it could be different for you) as the packet would be going through different logical entities in the network.
-* Scroll down and see the NAT rule applied which does the conversion from floating ip to fixed ip.
+* The metadata field `0x3` in the above output could be different for you as the packet would be going through different logical entities in the network.
+* Scroll down and see the NAT rule applied which does the conversion from floating ip (192.168.51.170) to fixed ip (192.168.110.191).
+* The IP addresses would be as per your environment.
 
-. Continue to scroll down and observe the drop rule on table 44
+. Continue to scroll down at the bottom and observe the drop rule on table 44
 +
 .Sample output
 ----
-44. ip,reg0=0x1/0x1,metadata=0x2, priority 100, cookie 0xd16452a8
-    ct(table=45,zone=NXM_NX_REG13[0..15])
-    drop
-     -> A clone of the packet is forked to recirculate. The forked pipeline will be resumed at table 45.
-     -> Sets the packet to an untracked state, and clears all the conntrack fields.
+        44. ip,reg0=0x1/0x1,metadata=0x2, priority 100, cookie 0xe4818076
+            ct(table=45,zone=NXM_NX_REG13[0..15])
+            drop
+             -> A clone of the packet is forked to recirculate. The forked pipeline will be resumed at table 45.
+             -> Sets the packet to an untracked state, and clears all the conntrack fields.
 ----
 
 . Continue to scroll till the end and observe the final rule with the set_field actions at table 47.
 +
 .Sample output
 ----
-+
+. . . 
 bridge("br-int")
 ----------------
     thaw
         Resuming from table 45
-45. ct_state=+new-est+trk,metadata=0x2, priority 7, cookie 0xb0f681d6
+45. ct_state=+new-est+trk,metadata=0x2, priority 7, cookie 0x17340a6f
     set_field:0x80000000000000000000000000/0x80000000000000000000000000->xxreg0
     set_field:0x200000000000000000000000000/0x200000000000000000000000000->xxreg0
     resubmit(,46)
-46. ip,reg0=0x200/0x200,reg15=0x3,metadata=0x2, priority 2001, cookie 0x78c0c47
+46. ip,reg0=0x200/0x200,reg15=0x3,metadata=0x2, priority 2001, cookie 0x9c9f8587
     set_field:0x2000000000000/0x2000000000000->xreg4
     resubmit(,47)
-47. reg8=0x20000/0x20000,metadata=0x2, priority 1000, cookie 0xdfe42d19
+47. reg8=0x20000/0x20000,metadata=0x2, priority 1000, cookie 0x50ece857
     set_field:0/0x1000000000000->xreg4
     set_field:0/0x2000000000000->xreg4
     set_field:0/0x4000000000000->xreg4
 
-Final flow: recirc_id=0x58,ct_state=new|trk,ct_zone=9,eth,icmp,reg0=0x281,reg11=0x7,reg12=0x8,reg13=0x9,reg14=0x2,reg15=0x3,metadata=0x2,in_port=ANY,vlan_tci=0x0000,dl_src=fa:16:3e:69:28:c7,dl_dst=fa:16:3e:ef:f8:14,nw_src=172.25.250.9,nw_dst=192.168.110.95,nw_tos=0,nw_ecn=0,nw_ttl=62,nw_frag=no,icmp_type=8,icmp_code=0
-Megaflow: recirc_id=0x58,ct_state=+new-est-rel-rpl-inv+trk,ct_mark=0/0x1,eth,icmp,in_port=ANY,dl_src=fa:16:3e:69:28:c7,nw_frag=no
+Final flow: recirc_id=0x8f,ct_state=new|trk,ct_zone=5,eth,icmp,reg0=0x281,reg11=0x3,reg12=0x2,reg13=0x5,reg14=0x2,reg15=0x3,metadata=0x2,in_port=ANY,vlan_tci=0x0000,dl_src=fa:16:3e:48:0b:45,dl_dst=fa:16:3e:f4:87:d1,nw_src=172.25.250.9,nw_dst=192.168.110.191,nw_tos=0,nw_ecn=0,nw_ttl=62,nw_frag=no,icmp_type=8,icmp_code=0
+Megaflow: recirc_id=0x8f,ct_state=+new-est-rel-rpl-inv+trk,ct_mark=0/0x1,eth,icmp,in_port=ANY,dl_src=fa:16:3e:48:0b:45,nw_frag=no
 Datapath actions: drop
 ----
 +
-The cookie value, in this case, 0xdfe42d19, is significant as it represents a logical flow within OVN. Logical flows are internal constructs within the Southbound database that describe how packets would be processed within the OVN infrastructure. These logical flows serve as the basis upon which actual OpenFlows are constructed and enforced.
+* The cookie value (in this case 0x50ece857), is significant as it represents a logical flow within OVN. 
+* Logical flows are internal constructs within the Southbound database that describe how packets would be processed within the OVN infrastructure. 
+* These logical flows serve as the basis upon which actual OpenFlows are constructed and enforced.
 
-. To continue investigating, return to the OVN controller and request a listing of the Southbound logical flows.
-+
-FIXME:
+. To continue investigating, return to the workstation and list the Southbound logical flows.
 +
 ----
-[root@overcloud-controller-0 ~]# ovn-sbctl list Logical_Flow | less
+oc exec -n openstack $(oc get pods -n openstack -l service=ovsdbserver-sb -o name | head -n 1) -- ovn-sbctl list Logical_Flow | less
 ----
 +
-In the list of logical flows, search for the cookie value noted earlier but without the leading 0x (in this case, 93e2a6e9). This allows you to pinpoint the specific logical flow associated with the packet in question.
+In the list of logical flows, search for the cookie value noted earlier but without the leading 0x (in this case, 50ece857). This allows you to pinpoint the specific logical flow associated with the packet in question.
 
 . Note that the logical flow includes references to a flow uuid that ties back to the previously identified cookie.
 +
 ----
-_uuid               : dfe42d19-e468-41f2-996d-751e20e7033f
+_uuid               : 50ece857-3056-4847-845e-3cd96aa7e62c
 actions             : "reg8[16] = 0; reg8[17] = 0; reg8[18] = 0; /* drop */"
 controller_meter    : []
 external_ids        : {source="northd.c:6695", stage-name=ls_out_acl_action}
-logical_datapath    : 08d7eb0e-0f7b-4a89-a417-6c288c5aa088
+logical_datapath    : e53c886d-6da3-4829-95a0-4068be40050b
 logical_dp_group    : []
 match               : "reg8[17] == 1"
 pipeline            : egress
@@ -409,9 +442,20 @@ tags                : {}
 hash                : 0
 ----
 +
-Observe the stage-name=ls_out_acl parameter within the logical flow. This indicates that the logical flow resides in the stage called "logical switch out acl." In the context of OVN, ACLs (Access Control Lists) play a crucial role in implementing security groups. The specific logical flow being examined appears to relate to egress traffic, as indicated by the pipeline designation: egress. Additionally, the match parameter points to the condition outport neutron_pg_drop && ip, specifying that the action is to drop packets. It is important to understand that neutron_pg_drop refers to an internal concept in Neutron, which is the networking component in OpenStack. This signifies that packets matching this condition are dropped by default. Within Neutron, to allow specific traffic through a security group, you must define rules that explicitly let it. If no such rules exist, traffic would be subject to default actions like the one represented by neutron_pg_drop, resulting in packet drops.
+* Observe the `stage-name=ls_out_acl` parameter within the logical flow. 
+* This indicates that the logical flow resides in the stage called **logical switch out acl**. 
+* In the context of OVN, ACLs (Access Control Lists) play a crucial role in implementing security groups. 
+* The specific logical flow being examined appears to relate to egress traffic, as indicated by the `pipeline` designation `egress`.
++
+FIXME: below differs in the output
++
+* Additionally, the match parameter points to the condition outport neutron_pg_drop && ip, specifying that the action is to drop packets. 
+* It is important to understand that neutron_pg_drop refers to an internal concept in Neutron, which is the networking component in OpenStack. 
+* This signifies that packets matching this condition are dropped by default. 
+* Within Neutron, to allow specific traffic through a security group, you must define rules that explicitly let it. 
+* If no such rules exist, traffic would be subject to default actions like the one represented by neutron_pg_drop, resulting in packet drops.
 
-. To further investigate the issue, list the ports associated with the instance and run openstack port show on the relevant port ID. This step provides insight into the specific ports, their configurations, and their associated security groups, which is critical for resolving the packet drop issue.
+. List the ports associated with the instance. 
 +
 [source, bash]
 ----
@@ -421,90 +465,110 @@ oc exec -n openstack openstackclient -- openstack port list --server scenario-bf
 .Sample output
 ----
 [student@workstation ~]$ oc exec -n openstack openstackclient -- openstack port list --server scenario-bfx019-vm
-+--------------------------------------+------+-------------------+-------------------------------------------------------------------------------+--------+
-| ID                                   | Name | MAC Address       | Fixed IP Addresses                                                            | Status |
-+--------------------------------------+------+-------------------+-------------------------------------------------------------------------------+--------+
-| 382179f5-4596-44b2-b0cf-27c8cb9fb2f3 |      | fa:16:3e:ef:f8:14 | ip_address='192.168.110.95', subnet_id='f57aa9b8-dbb8-4d29-ad79-746ce91cbd7b' | ACTIVE |
-+--------------------------------------+------+-------------------+-------------------------------------------------------------------------------+--------+
-[student@workstation ~]$
-[student@workstation ~]$ oc exec -n openstack openstackclient -- openstack port show 382179f5-4596-44b2-b0cf-27c8cb9fb2f3
-+-------------------------+------------------------------------------------------------------------------------------------------------+
-| Field                   | Value                                                                                                      |
-+-------------------------+------------------------------------------------------------------------------------------------------------+
-| admin_state_up          | UP                                                                                                         |
-| allowed_address_pairs   |                                                                                                            |
-| binding_host_id         | compute01.srv.example.com                                                                                  |
-| binding_profile         |                                                                                                            |
-| binding_vif_details     | bound_drivers.0='ovn', bridge_name='br-int', connectivity='l2', datapath_type='system', port_filter='True' |
-| binding_vif_type        | ovs                                                                                                        |
-| binding_vnic_type       | normal                                                                                                     |
-| created_at              | 2025-04-04T08:35:39Z                                                                                       |
-| data_plane_status       | None                                                                                                       |
-| description             |                                                                                                            |
-| device_id               | 693aff41-cedb-4031-895b-a806578f0426                                                                       |
-| device_owner            | compute:nova                                                                                               |
-| device_profile          | None                                                                                                       |
-| dns_assignment          | fqdn='scenario-bfx019-vm.openstackgate.local.', hostname='scenario-bfx019-vm', ip_address='192.168.110.95' |
-| dns_domain              |                                                                                                            |
-| dns_name                | scenario-bfx019-vm                                                                                         |
-| extra_dhcp_opts         |                                                                                                            |
-| fixed_ips               | ip_address='192.168.110.95', subnet_id='f57aa9b8-dbb8-4d29-ad79-746ce91cbd7b'                              |
-| id                      | 382179f5-4596-44b2-b0cf-27c8cb9fb2f3                                                                       |
-| ip_allocation           | immediate                                                                                                  |
-| mac_address             | fa:16:3e:ef:f8:14                                                                                          |
-| name                    |                                                                                                            |
-| network_id              | 79567bea-bb96-4a53-b4e1-008c273f36c6                                                                       |
-| numa_affinity_policy    | None                                                                                                       |
-| port_security_enabled   | True                                                                                                       |
-| project_id              | 7ac1618d984947c0bfcbf713a94fed4a                                                                           |
-| propagate_uplink_status | None                                                                                                       |
-| qos_network_policy_id   | None                                                                                                       |
-| qos_policy_id           | None                                                                                                       |
-| resource_request        | None                                                                                                       |
-| revision_number         | 4                                                                                                          |
-| security_group_ids      | 1be11bf9-cf82-46dd-b33c-37da199c790c                                                                       |
-| status                  | ACTIVE                                                                                                     |
-| tags                    |                                                                                                            |
-| trunk_details           | None                                                                                                       |
-| updated_at              | 2025-04-04T08:35:43Z                                                                                       |
-+-------------------------+------------------------------------------------------------------------------------------------------------+
++--------------------------------------+------+-------------------+--------------------------------------------------------------------------------+--------+
+| ID                                   | Name | MAC Address       | Fixed IP Addresses                                                             | Status |
++--------------------------------------+------+-------------------+--------------------------------------------------------------------------------+--------+
+| d0280d77-d8ae-4561-82f4-6d6240eac0ed |      | fa:16:3e:f4:87:d1 | ip_address='192.168.110.191', subnet_id='a2084f94-58a2-4c83-aff5-a78be643ee49' | ACTIVE |
++--------------------------------------+------+-------------------+--------------------------------------------------------------------------------+--------+
+----
+
+. Run openstack port show on the relevant port ID.
++
+[source, bash]
+----
+oc exec -n openstack openstackclient -- openstack port show <port ID>
 ----
 +
-As observed, the port associated with the instance has the port_security_enabled flag set to true. This signifies that port security mechanisms are active, enhancing the overall security of the network environment.
+Replace <port ID> with appropriate string.
++
+.Sample output
+----
+[student@workstation ~]$ oc exec -n openstack openstackclient -- openstack port show d0280d77-d8ae-4561-82f4-6d6240eac0ed
++-------------------------+-------------------------------------------------------------------------------------------------------------+
+| Field                   | Value                                                                                                       |
++-------------------------+-------------------------------------------------------------------------------------------------------------+
+| admin_state_up          | UP                                                                                                          |
+| allowed_address_pairs   |                                                                                                             |
+| binding_host_id         | compute02.srv.example.com                                                                                   |
+| binding_profile         |                                                                                                             |
+| binding_vif_details     | bound_drivers.0='ovn', bridge_name='br-int', connectivity='l2', datapath_type='system', port_filter='True'  |
+| binding_vif_type        | ovs                                                                                                         |
+| binding_vnic_type       | normal                                                                                                      |
+| created_at              | 2025-06-04T17:39:52Z                                                                                        |
+| data_plane_status       | None                                                                                                        |
+| description             |                                                                                                             |
+| device_id               | 164f92ed-8aa6-42fd-b862-43bc4d92e360                                                                        |
+| device_owner            | compute:nova                                                                                                |
+| device_profile          | None                                                                                                        |
+| dns_assignment          | fqdn='scenario-bfx019-vm.openstackgate.local.', hostname='scenario-bfx019-vm', ip_address='192.168.110.191' |
+| dns_domain              |                                                                                                             |
+| dns_name                | scenario-bfx019-vm                                                                                          |
+| extra_dhcp_opts         |                                                                                                             |
+| fixed_ips               | ip_address='192.168.110.191', subnet_id='a2084f94-58a2-4c83-aff5-a78be643ee49'                              |
+| id                      | d0280d77-d8ae-4561-82f4-6d6240eac0ed                                                                        |
+| ip_allocation           | immediate                                                                                                   |
+| mac_address             | fa:16:3e:f4:87:d1                                                                                           |
+| name                    |                                                                                                             |
+| network_id              | 795607c7-30ae-4acf-9b83-ef207f17a781                                                                        |
+| numa_affinity_policy    | None                                                                                                        |
+| port_security_enabled   | True                                                                                                        |
+| project_id              | 7ac1618d984947c0bfcbf713a94fed4a                                                                            |
+| propagate_uplink_status | None                                                                                                        |
+| qos_network_policy_id   | None                                                                                                        |
+| qos_policy_id           | None                                                                                                        |
+| resource_request        | None                                                                                                        |
+| revision_number         | 4                                                                                                           |
+| security_group_ids      | 74e453b4-e25b-4bf0-81df-f464c2e6b141                                                                        |
+| status                  | ACTIVE                                                                                                      |
+| tags                    |                                                                                                             |
+| trunk_details           | None                                                                                                        |
+| updated_at              | 2025-06-04T17:39:59Z                                                                                        |
++-------------------------+-------------------------------------------------------------------------------------------------------------+
+[student@workstation ~]$ 
+----
++
+* This step provides insight into the specific ports, their configurations, and their associated security groups, which is critical for resolving the packet drop issue.
+* The port associated with the instance has the `port_security_enabled` flag set to `true`. 
+* This signifies that port security mechanisms are active, enhancing the overall security of the network environment.
+* Pay attention to the `security_group_ids` field in the port's output. 
+* This field contains references to the associated security groups that govern the traffic allowed to and from the instance.
 
-. Pay attention to the security_group_ids field in the port's output. This field contains references to the associated security groups that govern the traffic allowed to and from the instance.
+. Fetch detailed information about the security group.
 +
 [source, bash]
 ----
 oc exec -n openstack openstackclient -- openstack security group show uuid
 ----
 +
-FIXME: Replace uuid with appropriate string.
+**Replace uuid with appropriate string.**
 +
 .Sample output
 ----
-[student@workstation ~]$ oc exec -n openstack openstackclient -- openstack security group show 1be11bf9-cf82-46dd-b33c-37da199c790c
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Field           | Value                                                                                                                                                                          |
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| created_at      | 2025-04-04T08:35:27Z                                                                                                                                                           |
-| description     | scenario-bfx019-sg                                                                                                                                                             |
-| id              | 1be11bf9-cf82-46dd-b33c-37da199c790c                                                                                                                                           |
-| name            | scenario-bfx019-sg                                                                                                                                                             |
-| project_id      | 7ac1618d984947c0bfcbf713a94fed4a                                                                                                                                               |
-| revision_number | 1                                                                                                                                                                              |
-| rules           | created_at='2025-04-04T08:35:27Z', direction='egress', ethertype='IPv6', id='6ea199bc-45b2-40a7-9fda-da5b2fb178a4', standard_attr_id='1369', updated_at='2025-04-04T08:35:27Z' |
-|                 | created_at='2025-04-04T08:35:27Z', direction='egress', ethertype='IPv4', id='a6f72bfa-6cf5-4e34-a9c1-cf9434ff84a6', standard_attr_id='1372', updated_at='2025-04-04T08:35:27Z' |
-| shared          | False                                                                                                                                                                          |
-| stateful        | True                                                                                                                                                                           |
-| tags            | []                                                                                                                                                                             |
-| updated_at      | 2025-04-04T08:35:27Z                                                                                                                                                           |
-+-----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+[student@workstation ~]$ oc exec -n openstack openstackclient -- openstack security group show 74e453b4-e25b-4bf0-81df-f464c2e6b141
++-----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Field           | Value                                                                                                                                                                        |
++-----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| created_at      | 2025-06-04T17:39:35Z                                                                                                                                                         |
+| description     | scenario-bfx019-sg                                                                                                                                                           |
+| id              | 74e453b4-e25b-4bf0-81df-f464c2e6b141                                                                                                                                         |
+| name            | scenario-bfx019-sg                                                                                                                                                           |
+| project_id      | 7ac1618d984947c0bfcbf713a94fed4a                                                                                                                                             |
+| revision_number | 1                                                                                                                                                                            |
+| rules           | created_at='2025-06-04T17:39:35Z', direction='egress', ethertype='IPv6', id='626d96bc-67cb-45ed-8976-cb6143da7306', standard_attr_id='66', updated_at='2025-06-04T17:39:35Z' |
+|                 | created_at='2025-06-04T17:39:35Z', direction='egress', ethertype='IPv4', id='f32ee870-94de-4ffe-af1b-094b36c863ef', standard_attr_id='69', updated_at='2025-06-04T17:39:35Z' |
+| shared          | False                                                                                                                                                                        |
+| stateful        | True                                                                                                                                                                         |
+| tags            | []                                                                                                                                                                           |
+| updated_at      | 2025-06-04T17:39:35Z                                                                                                                                                         |
++-----------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+[student@workstation ~]$ 
 ----
 +
-Upon inspecting the rules of the associated security group, it becomes evident that the current rules primarily let egress traffic. However, in this case, the instance requires ingress traffic access for both SSH and ICMP, which is lacking in the existing ruleset. The absence of rules allowing this specific ingress traffic results in the drop of the incoming packets.
+* Upon inspecting the rules of the associated security group, it becomes evident that the current rules primarily let egress traffic. 
+* However, in this case, the instance requires ingress traffic access for both SSH and ICMP, which is lacking in the existing ruleset. 
+* The absence of rules allowing this specific ingress traffic results in the drop of the incoming packets.
 
-. The resolution involves adding the necessary rules to the security group let the required SSH and ICMP traffic. These rules would specify the allowed protocols, ports, and sources/destinations for the traffic.
+. The resolution involves adding the necessary rules to the security group let the required SSH and ICMP traffic. 
 +
 [source, bash]
 ----
@@ -512,18 +576,20 @@ oc exec -n openstack openstackclient -- openstack security group rule create --i
 oc exec -n openstack openstackclient -- openstack security group rule create --ingress --protocol tcp --dst-port 22 uuid
 ----
 +
-FIXME: replace uuid
+* **Replace uuid with the appropriate string.**
+* These rules would specify the allowed protocols, ports, and sources/destinations for the traffic.
 +
 .Sample output
 ----
-[student@workstation ~]$ oc exec -n openstack openstackclient -- openstack security group rule create --ingress --protocol icmp 1be11bf9-cf82-46dd-b33c-37da199c790c+-------------------------+--------------------------------------+
+[student@workstation ~]$ oc exec -n openstack openstackclient -- openstack security group rule create --ingress --protocol icmp 74e453b4-e25b-4bf0-81df-f464c2e6b141
++-------------------------+--------------------------------------+
 | Field                   | Value                                |
 +-------------------------+--------------------------------------+
-| created_at              | 2025-04-04T10:15:22Z                 |
+| created_at              | 2025-06-09T06:03:45Z                 |
 | description             |                                      |
 | direction               | ingress                              |
 | ether_type              | IPv4                                 |
-| id                      | 7b1f799c-5d25-4925-9909-cd2166b8660d |
+| id                      | abcef87f-7819-4550-bb82-5fbc8b9278d0 |
 | name                    | None                                 |
 | normalized_cidr         | 0.0.0.0/0                            |
 | port_range_max          | None                                 |
@@ -534,20 +600,19 @@ FIXME: replace uuid
 | remote_group_id         | None                                 |
 | remote_ip_prefix        | 0.0.0.0/0                            |
 | revision_number         | 0                                    |
-| security_group_id       | 1be11bf9-cf82-46dd-b33c-37da199c790c |
+| security_group_id       | 74e453b4-e25b-4bf0-81df-f464c2e6b141 |
 | tags                    | []                                   |
-| updated_at              | 2025-04-04T10:15:22Z                 |
+| updated_at              | 2025-06-09T06:03:45Z                 |
 +-------------------------+--------------------------------------+
-
-[student@workstation ~]$ oc exec -n openstack openstackclient -- openstack security group rule create --ingress --protocol tcp --dst-port 22 1be11bf9-cf82-46dd-b33c-37da199c790c
+[student@workstation ~]$ oc exec -n openstack openstackclient -- openstack security group rule create --ingress --protocol tcp --dst-port 22 74e453b4-e25b-4bf0-81df-f464c2e6b141
 +-------------------------+--------------------------------------+
 | Field                   | Value                                |
 +-------------------------+--------------------------------------+
-| created_at              | 2025-04-04T10:15:59Z                 |
+| created_at              | 2025-06-09T06:04:08Z                 |
 | description             |                                      |
 | direction               | ingress                              |
 | ether_type              | IPv4                                 |
-| id                      | 0e26ab0f-9161-4160-8873-1802ea98a45d |
+| id                      | 96bb3448-970b-404f-b6f0-ad5daabce36c |
 | name                    | None                                 |
 | normalized_cidr         | 0.0.0.0/0                            |
 | port_range_max          | 22                                   |
@@ -558,35 +623,44 @@ FIXME: replace uuid
 | remote_group_id         | None                                 |
 | remote_ip_prefix        | 0.0.0.0/0                            |
 | revision_number         | 0                                    |
-| security_group_id       | 1be11bf9-cf82-46dd-b33c-37da199c790c |
+| security_group_id       | 74e453b4-e25b-4bf0-81df-f464c2e6b141 |
 | tags                    | []                                   |
-| updated_at              | 2025-04-04T10:15:59Z                 |
+| updated_at              | 2025-06-09T06:04:08Z                 |
 +-------------------------+--------------------------------------+
+[student@workstation ~]$ 
 ----
 
-. After making the necessary rule adjustments, test the connectivity by attempting ICMP ping and SSH access to the instance. Verify that these actions are successful, indicating that the added security group rules are now permitting the desired traffic.
+. After making the necessary rule adjustments, test the connectivity by attempting ICMP ping and SSH access to the instance. 
 +
 [source, bash]
 ----
 ping -c 1 IP
-ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@IP
 ----
 +
-FIXME: replace IP
-+
+[source, bash]
 ----
-[student@workstation ~]$ ping -c 1 192.168.51.194
-PING 192.168.51.194 (192.168.51.194) 56(84) bytes of data.
-64 bytes from 192.168.51.194: icmp_seq=1 ttl=62 time=3.40 ms
+ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@IP cat /etc/cirros/version
+----
++
+**Replace IP with appropriate string in both the above commands.**
++
+.Sample output
+----
+[student@workstation ~]$ ping 192.168.51.170 -c 1
+PING 192.168.51.170 (192.168.51.170) 56(84) bytes of data.
+64 bytes from 192.168.51.170: icmp_seq=1 ttl=62 time=3.15 ms
 
---- 192.168.51.194 ping statistics ---
+--- 192.168.51.170 ping statistics ---
 1 packets transmitted, 1 received, 0% packet loss, time 0ms
-rtt min/avg/max/mdev = 3.397/3.397/3.397/0.000 ms
-
-[student@workstation ~]$ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.194
-$ cat /etc/cirros/version
+rtt min/avg/max/mdev = 3.149/3.149/3.149/0.000 ms
+[student@workstation ~]$ 
+[student@workstation ~]$ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.170 cat /etc/cirros/version
 0.5.2
+[student@workstation ~]$ 
 ----
++
+Verify that these actions are successful, indicating that the added security group rules are now permitting the desired traffic.
+
 
 == Evaluation
 

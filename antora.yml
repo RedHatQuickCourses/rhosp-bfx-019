@@ -1,5 +1,5 @@
 name: rhosp-bfx-019
-title: "Red Hat OpenStack Networking: Break-fix Practice - Diagnosing Destination Host Unreachable and No Route to Host Errors"
+title: "Red Hat OpenStack Platform: Break-fix Practice - 1"
 version: 1
 nav:
 - modules/ROOT/nav.adoc

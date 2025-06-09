@@ -1,20 +1,14 @@
 = Guided solution (page 1)
 
-== Objectives
-* Investigate the instance connectivity issue in Red Hat OpenStack Platform.
-* Solve the instance connectivity in the hands-on lab environment.
-
-== Outcomes
-* Investigate why ssh to instance is not working.
-* Fix the ssh to instance failing issue.
-
-== Instructions
-
+. Log in to your lab environment on the **ROLE** platform.
 . Break the environment if you have not done it and then step through the fix.
++
+As the **student** user, run the lab start script on the **workstation** VM to reproduce the issue.
 +
 [source, bash]
 ----
-lab start bfx019
+cd /home/student/osp_training/scenarios_repo/
+./lab start bfx019
 ----
 +
 .Sample output
@@ -22,7 +16,7 @@ lab start bfx019
 [student@workstation ~]$ lab start bfx019
 Running start action against scenario bfx019
 Run the following command:
-ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.194
+ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.170
 ----
 +
 NOTE: The IP address in the displayed output may differ in your case.
@@ -32,21 +26,24 @@ NOTE: The IP address in the displayed output may differ in your case.
 [source, bash]
 ----
 ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@instance.ip.in.your.lab
+----
++
+[source, bash]
+----
 ping instance.ip.in.your.lab -c 1
 ----
 +
-IMPORTANT: In the above commands replace the string _instance.ip.in.your.lab_ with the actual IP address displayed in the output of the lab start script.
+IMPORTANT: In the above commands **replace** the string *instance.ip.in.your.lab* with the **actual IP** address displayed in the output of the lab start script.
 +
 .Sample output
 ----
-[student@workstation ~]$ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.194
-*
-ssh: connect to host 192.168.51.194 port 22: Connection timed out
+[student@workstation ~]$ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.170
+ssh: connect to host 192.168.51.170 port 22: Connection timed out
 
-[student@workstation ~]$ ping 192.168.51.194 -c 1
-PING 192.168.51.194 (192.168.51.194) 56(84) bytes of data.
+[student@workstation ~]$ ping 192.168.51.170 -c 1
+PING 192.168.51.170 (192.168.51.170) 56(84) bytes of data.
 
---- 192.168.51.194 ping statistics ---
+--- 192.168.51.170 ping statistics ---
 1 packets transmitted, 0 received, 100% packet loss, time 0ms
 ----
 +
@@ -64,30 +61,30 @@ oc exec -n openstack openstackclient -- openstack server list --long -c Name -c 
 +--------------------+--------+---------------------------+
 | Name               | Status | Host                      |
 +--------------------+--------+---------------------------+
-| scenario-bfx019-vm | ACTIVE | compute01.srv.example.com |
+| scenario-bfx019-vm | ACTIVE | compute02.srv.example.com |
 +--------------------+--------+---------------------------+
 ----
 +
-**Observe that it is compute01 in the above output, it my differ in your case.**
+**Observe that it is compute02 in the above output, it my differ in your case.**
 
 . Make sure you have access to compute node from other terminal before proceeding further.
 +
 [source, bash]
 ----
-ssh root@compute01.srv.example.com
+ssh root@compute02.srv.example.com
 ----
 +
 **Make sure you ssh to the appropriate compute node for your lab environment.**
 +
 .Sample output
 ----
-[student@workstation ~]$ ssh root@compute01.srv.example.com
+[student@workstation ~]$ ssh root@compute02.srv.example.com
 Activate the web console with: systemctl enable --now cockpit.socket
 
 Register this system with Red Hat Insights: insights-client --register
 Create an account or view all your systems at https://red.ht/insights-dashboard
 Last login: Fri Apr  4 08:32:38 2025 from 192.168.51.254
-[root@compute01 ~]#
+[root@compute02 ~]#
 ----
 
 . Exit from the compute node to be back on the workstation VM.
@@ -114,8 +111,8 @@ Register this system with Red Hat Insights: insights-client --register
 Create an account or view all your systems at https://red.ht/insights-dashboard
 Last login: Wed Apr  2 06:32:08 2025 from 172.25.250.9
 
-[lab@utility ~]$ ip route get 192.168.51.194
-192.168.51.194 dev eth2 src 192.168.51.254 uid 1002
+[lab@utility ~]$ ip route get 192.168.51.170
+192.168.51.170 dev eth2 src 192.168.51.254 uid 1002
 ----
 +
 **The above output shows that the route goes through eth2.**
@@ -151,8 +148,8 @@ _Replace instance.ip.in.your.lab with actual IP address_
 +
 .Sample output
 ----
-[lab@utility ~]$ ip neighbor | grep 192.168.51.194
-192.168.51.194 dev eth2 lladdr fa:16:3e:42:c2:37 STALE
+[lab@utility ~]$ ip neighbor | grep 192.168.51.170
+192.168.51.170 dev eth2 lladdr fa:16:3e:42:c2:37 STALE
 ----
 +
 * An entry with the floating IP is associated with a MAC address, indicating successful ARP negotiation.
@@ -163,7 +160,7 @@ _Replace instance.ip.in.your.lab with actual IP address_
 +
 [source, bash]
 ----
-ssh root@compute01.srv.example.com
+ssh root@compute02.srv.example.com
 ----
 +
 [source, bash]
@@ -173,7 +170,7 @@ ovs-vsctl show
 +
 .Sample output
 ----
-[student@workstation ~]$ ssh root@compute01.srv.example.com
+[student@workstation ~]$ ssh root@compute02.srv.example.com
 Activate the web console with: systemctl enable --now cockpit.socket
 
 Register this system with Red Hat Insights: insights-client --register
@@ -181,7 +178,7 @@ Create an account or view all your systems at https://red.ht/insights-dashboard
 Last login: Fri Apr  4 08:41:58 2025 from 192.168.51.254
 
 
-[root@compute01 ~]# ovs-vsctl show
+[root@compute02 ~]# ovs-vsctl show
 54ee4d39-0f5f-4be7-9253-e7963bf0ec50
     Manager "ptcp:6640:127.0.0.1"
         is_connected: true
@@ -202,14 +199,14 @@ Last login: Fri Apr  4 08:41:58 2025 from 192.168.51.254
 
 . To verify incoming traffic, initiate a tcpdump on this interface on the compute node and try to ping the instance from another terminal from the workstation node.
 +
-On compute node:
+**On compute node:**
 +
 [source, bash]
 ----
 tcpdump -envvi eth2 icmp
 ----
 +
-On workstation VM:
+**On workstation VM:**
 +
 [source, bash]
 ----
@@ -218,17 +215,17 @@ ping instance.ip.in.your.lab
 +
 .Sample output
 ----
-[root@compute01 ~]# tcpdump -envvi eth2 icmp
+[root@compute02 ~]# tcpdump -envvi eth2 icmp
 dropped privs to tcpdump
 tcpdump: listening on eth2, link-type EN10MB (Ethernet), snapshot length 262144 bytes
 08:51:14.195753 52:54:00:02:33:fe > fa:16:3e:42:c2:37, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 63, id 5314, offset 0, flags [DF], proto ICMP (1), length 84)
-    172.25.250.9 > 192.168.51.194: ICMP echo request, id 3, seq 1, length 64
+    172.25.250.9 > 192.168.51.170: ICMP echo request, id 3, seq 1, length 64
 08:51:15.231845 52:54:00:02:33:fe > fa:16:3e:42:c2:37, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 63, id 5801, offset 0, flags [DF], proto ICMP (1), length 84)
-    172.25.250.9 > 192.168.51.194: ICMP echo request, id 3, seq 2, length 64
+    172.25.250.9 > 192.168.51.170: ICMP echo request, id 3, seq 2, length 64
 08:51:16.255850 52:54:00:02:33:fe > fa:16:3e:42:c2:37, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 63, id 6204, offset 0, flags [DF], proto ICMP (1), length 84)
-    172.25.250.9 > 192.168.51.194: ICMP echo request, id 3, seq 3, length 64
+    172.25.250.9 > 192.168.51.170: ICMP echo request, id 3, seq 3, length 64
 08:51:17.279535 52:54:00:02:33:fe > fa:16:3e:42:c2:37, ethertype IPv4 (0x0800), length 98: (tos 0x0, ttl 63, id 6347, offset 0, flags [DF], proto ICMP (1), length 84)
-    172.25.250.9 > 192.168.51.194: ICMP echo request, id 3, seq 4, length 64
+    172.25.250.9 > 192.168.51.170: ICMP echo request, id 3, seq 4, length 64
 ----
 +
 * You observe that ICMP echo requests arriving at the machine.

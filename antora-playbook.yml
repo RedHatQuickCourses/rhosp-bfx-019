@@ -1,5 +1,5 @@
 site:
-  title: "Red Hat OpenStack Networking: Break-fix Practice - Diagnosing Destination Host Unreachable and No Route to Host Errors"
+  title: "Red Hat OpenStack Platform: Break-fix Practice - 1"
   start_page: rhosp-bfx-019::index.adoc
 
 content:

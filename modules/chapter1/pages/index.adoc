@@ -8,8 +8,8 @@ Your team manages a Red Hat OpenStack Platform (RHOSP) infrastructure used by an
 
 They noticed the following error when they try to connect to the instance:
 ----
-(overcloud) [stack@director ~]$ ssh -i /home/stack/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@172.25.250.203
-ssh: connect to host 172.25.250.203 port 22: Connection timed out
+(overcloud) [stack@director ~]$ ssh -i /home/stack/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.170
+ssh: connect to host 192.168.51.170 port 22: Connection timed out
 ----
 
 **How break-fix training works:**
