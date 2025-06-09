@@ -1,0 +1,59 @@
+= Evalution
+
+After making the necessary rule adjustments, test the connectivity by attempting ICMP ping and SSH access to the instance. 
+
+[source, bash]
+----
+ping -c 1 IP
+----
+
+[source, bash]
+----
+ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@IP cat /etc/cirros/version
+----
+
+**Replace IP with appropriate string in both the above commands.**
+
+.Sample output
+----
+[student@workstation ~]$ ping 192.168.51.170 -c 1
+PING 192.168.51.170 (192.168.51.170) 56(84) bytes of data.
+64 bytes from 192.168.51.170: icmp_seq=1 ttl=62 time=3.15 ms
+
+--- 192.168.51.170 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 3.149/3.149/3.149/0.000 ms
+[student@workstation ~]$ 
+[student@workstation ~]$ ssh -i /home/student/osp_training/.scenariobfx019/scenario-bfx019-key.pem cirros@192.168.51.170 cat /etc/cirros/version
+0.5.2
+[student@workstation ~]$ 
+----
+
+Verify that these actions are successful, indicating that the added security group rules are now permitting the desired traffic.
+
+
+== Evaluation
+
+As the stack user on the workstation vm, use the lab command to grade your work.
+
+[source, bash]
+----
+cd ~/osp_training/scenarios_repo/
+./lab grade bfx019
+----
+
+[NOTE]
+====
+Provide the gocubsgo as a password if prompted by the grade action.
+====
+
+== Finish
+
+Run the lab finish command to complete this exercise. This step is important to ensure that resources from current exercises do not impact upcoming exercises.
+
+----
+cd ~/osp_training/scenarios_repo/
+./lab finish bfx019
+----
+
+This concludes the lab exercise.
