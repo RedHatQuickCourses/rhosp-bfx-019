@@ -82,6 +82,9 @@
   <li class="nav-item" data-depth="2">
     <a class="nav-link" href="section2.html">Guided solution (page 2)</a>
   </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="section3.html">Evalution</a>
+  </li>
 </ul>
   </li>
 </ul>
@@ -272,7 +275,7 @@ Last login: Fri Apr  4 08:32:38 2025 from 192.168.51.254
 </div>
 </div>
 <div class="paragraph">
-<p><em>Replace <em>instance.ip.in.your.lab</em> with the actual IP address.</em></p>
+<p><strong>Replace instance.ip.in.your.lab with the actual IP address.</strong></p>
 </div>
 <div class="admonitionblock note">
 <table>
@@ -331,7 +334,7 @@ Last login: Wed Apr  2 06:32:08 2025 from 172.25.250.9
 </div>
 </div>
 <div class="paragraph">
-<p><em>Replace instance.ip.in.your.lab with actual IP address</em></p>
+<p><strong>Replace instance.ip.in.your.lab with actual IP address</strong></p>
 </div>
 <div class="listingblock">
 <div class="title">Sample output</div>
@@ -442,6 +445,171 @@ tcpdump: listening on eth2, link-type EN10MB (Ethernet), snapshot length 262144 
 </li>
 <li>
 <p>However, you observed that echo requests are not receiving the echo replies on the workstation VM.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Determine tap interface used for the instance on the compute node.</p>
+</li>
+<li>
+<p>Run below command on the workstation VM.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">oc exec -n openstack openstackclient -- openstack port list --server scenario-bfx019-vm</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Sample output</div>
+<div class="content">
+<pre>[student@workstation ~]$ oc exec -n openstack openstackclient -- openstack port list --server scenario-bfx019-vm
++--------------------------------------+------+-------------------+-------------------------------------------------------------------------------+--------+
+| ID                                   | Name | MAC Address       | Fixed IP Addresses                                                            | Status |
++--------------------------------------+------+-------------------+-------------------------------------------------------------------------------+--------+
+| 382179f5-4596-44b2-b0cf-27c8cb9fb2f3 |      | fa:16:3e:ef:f8:14 | ip_address='192.168.110.95', subnet_id='f57aa9b8-dbb8-4d29-ad79-746ce91cbd7b' | ACTIVE |
++--------------------------------------+------+-------------------+-------------------------------------------------------------------------------+--------+</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Derive the tap device&#8217;s name by appending "tap" to the initial string from the port ID and check it&#8217;s network interface setting <strong>on the compute node</strong>.</p>
+<div class="listingblock">
+<div class="title">Sample output</div>
+<div class="content">
+<pre>[root@compute02 ~]# ip link show tap382179f5-45
+14: tap382179f5-45: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1442 qdisc noqueue master ovs-system state UNKNOWN mode DEFAULT group default qlen 1000
+    link/ether fe:16:3e:ef:f8:14 brd ff:ff:ff:ff:ff:ff
+[root@compute02 ~]#</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Note how tap device’s name is derived by appending <strong>tap</strong> to the initial string <strong>382179f5-45</strong> from the port ID.
+You need to replace this string as per the port ID in your lab.</p>
+</div>
+</li>
+<li>
+<p>Run a <strong>tcpdump</strong> on the tap interface of the <strong>compute</strong> node while initiating a <strong>ping</strong> to the instance from the <strong>workstation</strong> VM.</p>
+<div class="listingblock">
+<div class="title">Sample output</div>
+<div class="content">
+<pre>[root@compute02 ~]# tcpdump -envvi tap382179f5-45
+dropped privs to tcpdump
+tcpdump: listening on tap382179f5-45, link-type EN10MB (Ethernet), snapshot length 262144 bytes</pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>[student@workstation ~]$ ping 192.168.51.170 -c 1
+PING 192.168.51.170 (192.168.51.170) 56(84) bytes of data.
+
+--- 192.168.51.170 ping statistics ---
+1 packets transmitted, 0 received, 100% packet loss, time 0ms
+
+[student@workstation ~]$</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You see that on ICMP echo requests are visible on the external NIC, they are not being delivered to the instance (via tap interface). The issue seems to be occurring within the br-int bridge where packets appear to be lost.</p>
+</div>
+</li>
+<li>
+<p><strong>On the compute node</strong>, run the following command to start <code>tcpdump</code> and capture a single ICMP request packet</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">sudo tcpdump -i &lt;external_interface&gt; icmp -c 1 -w icmp-request.pcap</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Replace &lt;external_interface&gt;</strong> with the name of the appropriate external network interface (e.g., <code>eth2</code>, <code>ens4</code>, etc.) associated with br-ex.</p>
+</div>
+<div class="listingblock">
+<div class="title">Sample output</div>
+<div class="content">
+<pre>[root@compute02 ~]# tcpdump -i eth2 icmp -c1 -w icmp-request.pcap
+dropped privs to tcpdump
+tcpdump: listening on eth2, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+1 packet captured
+1 packet received by filter
+0 packets dropped by kernel</pre>
+</div>
+</div>
+</li>
+<li>
+<p><strong>From the workstation node</strong>, send a single ICMP request (ping) to the instance</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">ping -c 1 &lt;instance_ip&gt;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><strong>Replace &lt;instance_ip&gt;</strong> with the IP address of the target instance.</p>
+</div>
+</li>
+<li>
+<p>Once the ping is sent, the <code>tcpdump</code> command on the compute node will capture the ICMP request and save it to the file <code>icmp-request.pcap</code>.</p>
+<div class="listingblock">
+<div class="title">Sample output</div>
+<div class="content">
+<pre>[root@compute02 ~]# tcpdump -i eth2 icmp -c1 -w icmp-request.pcap
+dropped privs to tcpdump
+tcpdump: listening on eth2, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+1 packet captured
+1 packet received by filter
+0 packets dropped by kernel</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Verify the generated file content by reading back the stored packet using tcpdump command <strong>on the compute node</strong>.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">tcpdump -r icmp-request.pcap</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Sample output</div>
+<div class="content">
+<pre>[root@compute02 ~]# tcpdump -r icmp-request.pcap
+reading from file icmp-request.pcap, link-type EN10MB (Ethernet), snapshot length 262144
+dropped privs to tcpdump
+08:59:57.952623 IP workstation.lab.example.com &gt; 192.168.51.194: ICMP echo request, id 5, seq 1, length 64</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Use the ovs-pcap tool to read and display the packets from the stored icmp-request.pcap file.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">ovs-pcap icmp-request.pcap</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Sample output</div>
+<div class="content">
+<pre>[root@compute02 ~]# ovs-pcap icmp-request.pcap
+fa163e42c2375254000233fe0800450000546de440003f013337ac19fa09c0a833c208007f98000500018d9fef67000000002e870e0000000000101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f3031323334353637</pre>
+</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>ovs-pcap</strong> command is provided by <strong>openvswitch-test</strong> package.</p>
+</li>
+<li>
+<p>openvswitch-test package is available form the <strong>fast-datapath-for-rhel-9-x86_64-rpms</strong> channel.</p>
+</li>
+<li>
+<p>Subscribe the compute node and enable fast-datapath-for-rhel-9-x86_64-rpms channel.</p>
+</li>
+<li>
+<p>Install <strong>openvswitch3.3-test-3.3.0-49.el9fdp.noarch</strong> package.</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">subscription-manager register
+subscription-manager repos --enable=fast-datapath-for-rhel-9-x86_64-rpms
+dnf install openvswitch3.3-test-3.3.0-49.el9fdp.noarch</code></pre>
+</div>
+</div>
 </li>
 </ul>
 </div>
