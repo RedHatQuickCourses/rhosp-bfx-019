@@ -315,8 +315,6 @@ hash                : 0
 * In the context of OVN, ACLs (Access Control Lists) play a crucial role in implementing security groups. 
 * The specific logical flow being examined appears to relate to egress traffic, as indicated by the `pipeline` designation `egress`.
 +
-FIXME: below differs in the output
-+
 * Additionally, the match parameter points to the condition outport neutron_pg_drop && ip, specifying that the action is to drop packets. 
 * It is important to understand that neutron_pg_drop refers to an internal concept in Neutron, which is the networking component in OpenStack. 
 * This signifies that packets matching this condition are dropped by default. 
