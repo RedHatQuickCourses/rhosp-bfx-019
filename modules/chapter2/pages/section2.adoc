@@ -50,7 +50,7 @@ bridge("br-ex")
      -> no learned MAC for destination, flooding
 
 bridge("br-int")
- 0. in_port=6,vlan_tci=0x0000/0x1000, priority 100, cookie 0xecf8ffe
+ 0. in_port=8,vlan_tci=0x0000/0x1000, priority 100, cookie 0xecf8ffe
     set_field:0x5/0xffff->reg13
     set_field:0x2->reg11
     set_field:0x3->reg12
@@ -135,7 +135,7 @@ tunnel_key          : 1
 +
 In the above output:
 +
-* `tunnel_key 1` is a logical switch which maps to the Neutron network id `ee961465-e812-4563-aaa8-05adb3476889`
+* `tunnel_key 1` is a logical switch which maps to the Neutron network id `eb22ba34-3201-467b-9ce2-451ee53790e9`
 * Neutron network name is `public`. 
 * A Logical switch in OVN is a network in Neutron. 
 * Hence datapath 1 is the public switch in OVN.
