@@ -192,7 +192,7 @@ bridge("br-ex")
      -&gt; no learned MAC for destination, flooding
 
 bridge("br-int")
- 0. in_port=6,vlan_tci=0x0000/0x1000, priority 100, cookie 0xecf8ffe
+ 0. in_port=8,vlan_tci=0x0000/0x1000, priority 100, cookie 0xecf8ffe
     set_field:0x5/0xffff-&gt;reg13
     set_field:0x2-&gt;reg11
     set_field:0x3-&gt;reg12
@@ -300,7 +300,7 @@ tunnel_key          : 1</pre>
 <div class="ulist">
 <ul>
 <li>
-<p><code>tunnel_key 1</code> is a logical switch which maps to the Neutron network id <code>ee961465-e812-4563-aaa8-05adb3476889</code></p>
+<p><code>tunnel_key 1</code> is a logical switch which maps to the Neutron network id <code>eb22ba34-3201-467b-9ce2-451ee53790e9</code></p>
 </li>
 <li>
 <p>Neutron network name is <code>public</code>.</p>
